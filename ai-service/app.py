@@ -7,6 +7,8 @@ from services.schema_rag import (
     index_schema,
     retrieve_relevant_schema
 )
+from services.query_pipeline import process_query
+from services.sql_validator import validate_sql
 
 
 app = FastAPI(title="QueryPilot AI Service")
@@ -16,6 +18,8 @@ class SQLRequest(BaseModel):
     query: str
     schema: str
 
+class QueryRequest(BaseModel):
+    query: str
 
 @app.get("/")
 def root():
@@ -68,3 +72,13 @@ def generate_sql_endpoint(request: SQLRequest):
     )
 
     return result
+
+@app.post("/query")
+def query_database(request: QueryRequest):
+
+    return process_query(request.query)
+
+@app.get("/validate-sql")
+def validate_sql_endpoint(sql: str):
+
+    return validate_sql(sql)
