@@ -66,7 +66,7 @@ RELATIONSHIPS:
     return documents, ids, metadatas
 
 
-def index_schema(schema):
+# def index_schema(schema):
 
     documents, ids, metadatas = create_schema_documents(schema)
 
@@ -92,17 +92,63 @@ def index_schema(schema):
         "tables": ids
     }
 
+def index_schema(schema):
 
-def retrieve_relevant_schema(query, top_k=3):
+    documents, ids, metadatas = create_schema_documents(schema)
+
+    if not documents:
+        return {
+            "indexed": 0
+        }
+
+    # Remove previously indexed schema
+    existing_ids = collection.get()["ids"]
+
+    if existing_ids:
+        collection.delete(
+            ids=existing_ids
+        )
+
+    # Add latest schema
+    collection.add(
+        documents=documents,
+        ids=ids,
+        metadatas=metadatas
+    )
+
+    return {
+        "indexed": len(documents),
+        "tables": ids
+    }
+
+def retrieve_relevant_schema(query, top_k=3, max_distance=0.75):
 
     if collection.count() == 0:
         return []
 
     results = collection.query(
         query_texts=[query],
-        n_results=top_k
+        n_results=top_k,
+        include=["documents", "distances"]
     )
 
-    documents = results.get("documents", [[]])[0]
+    documents = results["documents"][0]
+    distances = results["distances"][0]
 
-    return documents
+    print("\n===== RAG RESULTS =====")
+
+    relevant_documents = []
+
+    for document, distance in zip(documents, distances):
+
+        table_name = document.split("TABLE:")[1].split("\n")[0].strip()
+
+        print("DISTANCE:", distance)
+        print("TABLE:", table_name)
+        print("======================")
+
+        # Lower distance = more relevant
+        if distance <= max_distance:
+            relevant_documents.append(document)
+
+    return relevant_documents
