@@ -9,12 +9,12 @@ def execute_query(sql: str):
     try:
 
         cursor.execute(sql)
-
+        
+# column names from the returned table
         columns = [
             description[0]
             for description in cursor.description
         ]
-
         rows = cursor.fetchall()
 
         results = []

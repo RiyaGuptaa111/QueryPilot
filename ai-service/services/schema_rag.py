@@ -48,14 +48,14 @@ def create_schema_documents(schema):
             )
 
         document = f"""
-TABLE: {table_name}
+            TABLE: {table_name}
 
-COLUMNS:
-{chr(10).join("- " + column for column in columns)}
+            COLUMNS:
+            {chr(10).join("- " + column for column in columns)}
 
-RELATIONSHIPS:
-{chr(10).join("- " + relation for relation in relationships)}
-"""
+            RELATIONSHIPS:
+            {chr(10).join("- " + relation for relation in relationships)}
+            """
 
         documents.append(document)
         ids.append(table_name)
