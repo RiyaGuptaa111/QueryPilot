@@ -1,3 +1,5 @@
+print("🔥🔥🔥 QUERY PIPELINE FILE LOADED 🔥🔥🔥")
+
 from services.schema_service import get_database_schema
 from services.schema_rag import retrieve_relevant_schema
 from services.sql_generator import generate_sql
@@ -7,20 +9,24 @@ from services.sql_correction import correct_sql
 from services.result_analyzer import analyze_result
 from services.chart_validator import validate_chart
 
-def process_query(user_query: str):
 
+def process_query(user_query: str):
+    print("🔥🔥🔥 PROCESS_QUERY CALLED 🔥🔥🔥")
     # 1. Get database schema
     schema = get_database_schema()
 
     if not schema:
-
         return {
             "success": False,
             "sql": "",
             "rows": [],
+            "columns": [],
             "needs_clarification": True,
-            "clarification_question": "The database does not contain any tables.",
-            "explanation": "No database schema was found."
+            "clarification_question":
+                "The database does not contain any tables.",
+            "error": None,
+            "explanation":
+                "No database schema was found."
         }
 
     # 2. Retrieve relevant schema
@@ -30,14 +36,15 @@ def process_query(user_query: str):
     )
 
     if not relevant_schema:
-
         return {
             "success": False,
             "sql": "",
             "rows": [],
+            "columns": [],
             "needs_clarification": True,
             "clarification_question":
                 "I couldn't find relevant database information.",
+            "error": None,
             "explanation":
                 "Schema retrieval returned no relevant tables."
         }
@@ -53,33 +60,50 @@ def process_query(user_query: str):
 
     # 5. Stop if clarification is needed
     if result.get("needs_clarification"):
-
         return {
             "success": False,
             **result,
-            "rows": []
+            "rows": [],
+            "columns": []
         }
 
-    sql = result.get("sql", "")
+    sql = result.get("sql", "").strip()
 
-    # 6. Validate SQL
+    if not sql:
+        return {
+            "success": False,
+            "sql": "",
+            "rows": [],
+            "columns": [],
+            "needs_clarification": False,
+            "error": "No SQL query was generated.",
+            "explanation":
+                "The AI did not generate a SQL query."
+        }
+
+    # 6. Validate generated SQL
     validation = validate_sql(sql)
 
     if not validation["valid"]:
-
         return {
             "success": False,
             "sql": sql,
             "rows": [],
+            "columns": [],
             "needs_clarification": False,
             "error": validation["error"],
-            "explanation": "The generated SQL failed validation."
+            "explanation":
+                "The generated SQL failed validation.",
+            "sql_corrected": False
         }
 
-        # 7. Execute SQL
+    # 7. Execute generated SQL
     execution = execute_query(sql)
 
-    # 8. If execution succeeds, return results
+    print("🔥🔥🔥 EXECUTION RESULT 🔥🔥🔥")
+    print(execution)
+
+    # 8. If execution succeeds
     if execution["success"]:
 
         analysis = analyze_result(
@@ -88,6 +112,7 @@ def process_query(user_query: str):
             columns=execution["columns"],
             rows=execution["rows"]
         )
+
         chart = validate_chart(
             analysis.get("chart", {}),
             execution["columns"]
@@ -100,13 +125,18 @@ def process_query(user_query: str):
             "columns": execution["columns"],
             "error": None,
             "needs_clarification": False,
-            "explanation": result.get("explanation", ""),
+            "explanation":
+                result.get("explanation", ""),
             "sql_corrected": False,
-            "answer": analysis.get("answer", ""),
-            "summary": analysis.get("summary", ""),
-            "chart": chart        }
+            "answer":
+                analysis.get("answer", ""),
+            "summary":
+                analysis.get("summary", ""),
+            "chart": chart
+        }
 
-    # 9. Ask Gemini to correct the failed SQL
+    # 9. Generated SQL failed
+    # Ask AI to correct it
     correction = correct_sql(
         user_query=user_query,
         sql=sql,
@@ -114,11 +144,10 @@ def process_query(user_query: str):
         schema=schema_context
     )
 
-    corrected_sql = correction.get("sql", "")
+    corrected_sql = correction.get("sql", "").strip()
 
-    # 10. Validate corrected SQL
+    # 10. Correction failed
     if not corrected_sql:
-
         return {
             "success": False,
             "sql": sql,
@@ -126,13 +155,18 @@ def process_query(user_query: str):
             "columns": [],
             "error": execution["error"],
             "needs_clarification": False,
-            "explanation": "SQL execution failed and could not be corrected."
+            "explanation":
+                correction.get(
+                    "explanation",
+                    "SQL execution failed and could not be corrected."
+                ),
+            "sql_corrected": False
         }
 
+    # 11. Validate corrected SQL
     corrected_validation = validate_sql(corrected_sql)
 
     if not corrected_validation["valid"]:
-
         return {
             "success": False,
             "sql": corrected_sql,
@@ -140,35 +174,69 @@ def process_query(user_query: str):
             "columns": [],
             "error": corrected_validation["error"],
             "needs_clarification": False,
-            "explanation": "The corrected SQL failed validation."
+            "explanation":
+                "The corrected SQL failed validation.",
+            "sql_corrected": True
         }
 
-    # 11. Execute corrected SQL
+    # 12. Execute corrected SQL
     corrected_execution = execute_query(corrected_sql)
 
-    # 12. Return corrected result
-    if corrected_execution["success"]:
-
-        analysis = analyze_result(
-            user_query=user_query,
-            sql=corrected_sql,
-            columns=corrected_execution["columns"],
-            rows=corrected_execution["rows"]
-        )
-
+    # 13. Corrected SQL still failed
+    if not corrected_execution["success"]:
         return {
-            "success": True,
+            "success": False,
             "sql": corrected_sql,
-            "rows": corrected_execution["rows"],
-            "columns": corrected_execution["columns"],
-            "error": None,
+            "rows": [],
+            "columns": [],
+            "error": corrected_execution["error"],
             "needs_clarification": False,
-            "explanation": correction.get(
+            "explanation":
+                "The corrected SQL also failed during execution.",
+            "sql_corrected": True
+        }
+
+    # 14. Analyze corrected result
+    analysis = analyze_result(
+        user_query=user_query,
+        sql=corrected_sql,
+        columns=corrected_execution["columns"],
+        rows=corrected_execution["rows"]
+    )
+    print("🔥🔥🔥 ANALYSIS RESULT 🔥🔥🔥")
+    print(analysis)
+
+    chart = validate_chart(
+        analysis.get("chart", {}),
+        execution["columns"]
+    )
+
+    print("🔥🔥🔥 VALIDATED CHART 🔥🔥🔥")
+    print(chart)
+
+    # 15. Validate corrected chart
+    chart = validate_chart(
+        analysis.get("chart", {}),
+        corrected_execution["columns"]
+    )
+
+    # 16. Return corrected result
+    return {
+        "success": True,
+        "sql": corrected_sql,
+        "rows": corrected_execution["rows"],
+        "columns": corrected_execution["columns"],
+        "error": None,
+        "needs_clarification": False,
+        "explanation":
+            correction.get(
                 "explanation",
                 "The generated SQL was automatically corrected."
             ),
-            "sql_corrected": True,
-            "answer": analysis.get("answer", ""),
-            "summary": analysis.get("summary", ""),
-            "chart": analysis.get("chart", {})
-        }
+        "sql_corrected": True,
+        "answer":
+            analysis.get("answer", ""),
+        "summary":
+            analysis.get("summary", ""),
+        "chart": chart
+    }

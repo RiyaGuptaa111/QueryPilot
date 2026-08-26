@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -10,9 +11,8 @@ from services.schema_rag import (
 from services.query_pipeline import process_query
 from services.sql_validator import validate_sql
 
-
 app = FastAPI(title="QueryPilot AI Service")
-
+print("🔥🔥🔥 APP.PY LOADED 🔥🔥🔥")
 
 class SQLRequest(BaseModel):
     query: str
@@ -23,10 +23,12 @@ class QueryRequest(BaseModel):
 
 @app.get("/")
 def root():
+
+    print("🔥🔥🔥 ROOT ENDPOINT CALLED 🔥🔥🔥")
+
     return {
         "message": "QueryPilot AI Service is running 🤖"
     }
-
 
 @app.get("/health")
 def health():
@@ -76,8 +78,32 @@ def generate_sql_endpoint(request: SQLRequest):
 @app.post("/query")
 def query_database(request: QueryRequest):
 
-    return process_query(request.query)
+    print("🔥🔥🔥 /QUERY ENDPOINT CALLED 🔥🔥🔥")
+    print("QUERY:", request.query)
 
+    try:
+
+        print("🔥🔥🔥 CALLING PROCESS_QUERY 🔥🔥🔥")
+
+        result = process_query(request.query)
+
+        print("🔥🔥🔥 PROCESS_QUERY RETURNED 🔥🔥🔥")
+
+        return result
+
+    except Exception as error:
+
+        print("❌❌❌ QUERY ERROR ❌❌❌")
+        print("ERROR:", error)
+
+        import traceback
+        traceback.print_exc()
+
+        return {
+            "success": False,
+            "error": str(error)
+        }
+    
 @app.get("/validate-sql")
 def validate_sql_endpoint(sql: str):
 

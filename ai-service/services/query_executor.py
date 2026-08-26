@@ -9,21 +9,23 @@ def execute_query(sql: str):
     try:
 
         cursor.execute(sql)
-        
-# column names from the returned table
+
+        # Column names from returned table
         columns = [
             description[0]
             for description in cursor.description
         ]
+
         rows = cursor.fetchall()
 
         results = []
 
         for row in rows:
-
             results.append(
                 dict(zip(columns, row))
             )
+
+        connection.commit()
 
         return {
             "success": True,
@@ -33,6 +35,8 @@ def execute_query(sql: str):
         }
 
     except Exception as error:
+
+        connection.rollback()
 
         return {
             "success": False,
