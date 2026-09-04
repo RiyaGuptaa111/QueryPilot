@@ -48,49 +48,24 @@ def create_schema_documents(schema):
             )
 
         document = f"""
-            TABLE: {table_name}
+TABLE: {table_name}
 
-            COLUMNS:
-            {chr(10).join("- " + column for column in columns)}
+COLUMNS:
+{chr(10).join("- " + column for column in columns)}
 
-            RELATIONSHIPS:
-            {chr(10).join("- " + relation for relation in relationships)}
-            """
+RELATIONSHIPS:
+{chr(10).join("- " + relation for relation in relationships)}
+"""
 
         documents.append(document)
         ids.append(table_name)
+
         metadatas.append({
             "table": table_name
         })
 
     return documents, ids, metadatas
 
-
-# def index_schema(schema):
-
-    documents, ids, metadatas = create_schema_documents(schema)
-
-    if not documents:
-        return {
-            "indexed": 0
-        }
-
-    # Rebuild the collection so schema changes don't
-    # leave old documents behind.
-    collection.delete(
-        where={}
-    )
-
-    collection.add(
-        documents=documents,
-        ids=ids,
-        metadatas=metadatas
-    )
-
-    return {
-        "indexed": len(documents),
-        "tables": ids
-    }
 
 def index_schema(schema):
 
@@ -121,7 +96,12 @@ def index_schema(schema):
         "tables": ids
     }
 
-def retrieve_relevant_schema(query, top_k=3, max_distance=0.75):
+
+def retrieve_relevant_schema(
+    query,
+    top_k=3,
+    max_distance=0.75
+):
 
     if collection.count() == 0:
         return []
@@ -135,19 +115,13 @@ def retrieve_relevant_schema(query, top_k=3, max_distance=0.75):
     documents = results["documents"][0]
     distances = results["distances"][0]
 
-    print("\n===== RAG RESULTS =====")
-
     relevant_documents = []
 
-    for document, distance in zip(documents, distances):
+    for document, distance in zip(
+        documents,
+        distances
+    ):
 
-        table_name = document.split("TABLE:")[1].split("\n")[0].strip()
-
-        print("DISTANCE:", distance)
-        print("TABLE:", table_name)
-        print("======================")
-
-        # Lower distance = more relevant
         if distance <= max_distance:
             relevant_documents.append(document)
 

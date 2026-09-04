@@ -1,29 +1,16 @@
 from services.database import get_db_connection
 
 
-print("🔥🔥🔥 SCHEMA SERVICE FILE LOADED 🔥🔥🔥")
-
-
 def get_database_schema():
-
-    print("🔥🔥🔥 GET_DATABASE_SCHEMA CALLED 🔥🔥🔥")
 
     connection = None
     cursor = None
 
     try:
-
         connection = get_db_connection()
-
-        print("✅ DATABASE CONNECTION CREATED")
-
         cursor = connection.cursor()
 
-
-        # ========================================================
-        # GET TABLES + COLUMNS
-        # ========================================================
-
+        # Get tables + columns
         cursor.execute("""
             SELECT
                 table_name,
@@ -37,16 +24,7 @@ def get_database_schema():
 
         column_rows = cursor.fetchall()
 
-        print(
-            "📊 COLUMN ROW COUNT:",
-            len(column_rows)
-        )
-
-
-        # ========================================================
-        # GET FOREIGN KEY RELATIONSHIPS
-        # ========================================================
-
+        # Get foreign key relationships
         cursor.execute("""
             SELECT
                 tc.table_name AS table_name,
@@ -60,8 +38,8 @@ def get_database_schema():
                 AND tc.table_schema = kcu.table_schema
 
             JOIN information_schema.constraint_column_usage AS ccu
-                ON ccu.constraint_name = kcu.constraint_name
-                AND ccu.table_schema = kcu.table_schema
+                ON ccu.constraint_name = tc.constraint_name
+                AND ccu.table_schema = tc.table_schema
 
             WHERE tc.constraint_type = 'FOREIGN KEY'
             AND tc.table_schema = 'public';
@@ -69,51 +47,24 @@ def get_database_schema():
 
         relationship_rows = cursor.fetchall()
 
-        print(
-            "🔗 RELATIONSHIP COUNT:",
-            len(relationship_rows)
-        )
-
-
-        # ========================================================
-        # BUILD SCHEMA
-        # ========================================================
-
+        # Build schema dictionary
         schema = {}
 
-
-        for (
-            table_name,
-            column_name,
-            data_type
-        ) in column_rows:
+        for table_name, column_name, data_type in column_rows:
 
             if table_name not in schema:
-
                 schema[table_name] = {
-
                     "table_name": table_name,
-
                     "columns": [],
-
                     "relationships": []
-
                 }
 
-
             schema[table_name]["columns"].append({
-
                 "name": column_name,
-
                 "type": data_type
-
             })
 
-
-        # ========================================================
-        # ADD RELATIONSHIPS
-        # ========================================================
-
+        # Add relationships
         for (
             table_name,
             column_name,
@@ -122,80 +73,24 @@ def get_database_schema():
         ) in relationship_rows:
 
             if table_name not in schema:
-
                 schema[table_name] = {
-
                     "table_name": table_name,
-
                     "columns": [],
-
                     "relationships": []
-
                 }
 
-
-            schema[table_name][
-                "relationships"
-            ].append({
-
+            schema[table_name]["relationships"].append({
                 "column": column_name,
-
-                "references_table":
-                    referenced_table,
-
-                "references_column":
-                    referenced_column
-
+                "references_table": referenced_table,
+                "references_column": referenced_column
             })
 
-
-        # ========================================================
-        # CONVERT DICTIONARY → LIST
-        # ========================================================
-
-        schema_list = list(
-            schema.values()
-        )
-
-
-        print(
-            "🔥 TABLE COUNT:",
-            len(schema_list)
-        )
-
-        print(
-            "🔥 DATABASE SCHEMA:",
-            schema_list
-        )
-
-
-        return schema_list
-
-
-    except Exception as error:
-
-        print(
-            "❌❌❌ SCHEMA ERROR ❌❌❌"
-        )
-
-        print(
-            "ERROR:",
-            error
-        )
-
-        raise
-
+        return schema
 
     finally:
 
         if cursor:
-
             cursor.close()
 
         if connection:
-
             connection.close()
-
-        print(
-            "🔒 DATABASE CONNECTION CLOSED"
-        )

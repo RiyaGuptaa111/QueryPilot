@@ -1,19 +1,18 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-
-from services.sql_generator import generate_sql
-from services.schema_service import get_database_schema
-from services.schema_rag import (
-    index_schema,
-    retrieve_relevant_schema
-)
-from services.query_pipeline import process_query
-from services.sql_validator import validate_sql
-from services.database import get_db_connection
-
 import os
 
-from fastapi import FastAPI, Header, HTTPException, Depends
+from fastapi import Depends, FastAPI, Header, HTTPException
+from pydantic import BaseModel
+
+from services.database import get_db_connection
+from services.schema_rag import (
+    index_schema,
+    retrieve_relevant_schema,
+)
+from services.schema_service import get_database_schema
+from services.sql_generator import generate_sql
+from services.sql_validator import validate_sql
+from services.query_pipeline import process_query
+
 
 app = FastAPI(title="QueryPilot AI Service")
 
@@ -24,11 +23,6 @@ AI_SERVICE_KEY = os.getenv("AI_SERVICE_KEY")
 def verify_internal_key(
     x_internal_key: str = Header(None)
 ):
-    print(
-        "FASTAPI KEY RECEIVED:",
-        bool(x_internal_key)
-    )
-
     if not AI_SERVICE_KEY:
         raise HTTPException(
             status_code=500,
@@ -36,16 +30,10 @@ def verify_internal_key(
         )
 
     if x_internal_key != AI_SERVICE_KEY:
-        print("❌ INTERNAL KEY MISMATCH")
-
         raise HTTPException(
             status_code=401,
             detail="Unauthorized AI service request."
         )
-
-    print("✅ INTERNAL KEY VERIFIED")
-
-    
 
 
 class SQLRequest(BaseModel):
@@ -63,9 +51,8 @@ class QueryRequest(BaseModel):
 
 @app.get("/")
 def root():
-
     return {
-        "message": "QueryPilot AI Service is running 🤖"
+        "message": "QueryPilot AI Service is running"
     }
 
 
@@ -77,7 +64,6 @@ def root():
 def health(
     _: None = Depends(verify_internal_key)
 ):
-
     return {
         "status": "healthy",
         "service": "QueryPilot AI Service"
@@ -92,18 +78,14 @@ def health(
 def database_health(
     _: None = Depends(verify_internal_key)
 ):
-
     connection = None
     cursor = None
 
     try:
-
         connection = get_db_connection()
-
         cursor = connection.cursor()
 
         cursor.execute("SELECT 1")
-
         cursor.fetchone()
 
         return {
@@ -112,21 +94,15 @@ def database_health(
             "database": "PostgreSQL"
         }
 
-    except Exception as error:
-
-        print("❌ DATABASE HEALTH ERROR:", error)
-
+    except Exception:
         return {
             "success": False,
             "status": "disconnected",
-            "database": "PostgreSQL",
-            "error": str(error)
+            "database": "PostgreSQL"
         }
 
     finally:
-
         try:
-
             if cursor:
                 cursor.close()
 
@@ -145,9 +121,7 @@ def database_health(
 def schema(
     _: None = Depends(verify_internal_key)
 ):
-
     try:
-
         database_schema = get_database_schema()
 
         return {
@@ -155,14 +129,11 @@ def schema(
             "schema": database_schema
         }
 
-    except Exception as error:
-
-        print("❌ SCHEMA ERROR:", error)
-
+    except Exception:
         return {
             "success": False,
             "schema": {},
-            "error": str(error)
+            "error": "Unable to retrieve database schema."
         }
 
 
@@ -174,20 +145,15 @@ def schema(
 def index_database_schema(
     _: None = Depends(verify_internal_key)
 ):
-
     try:
-
         database_schema = get_database_schema()
 
         return index_schema(database_schema)
 
-    except Exception as error:
-
-        print("❌ INDEX SCHEMA ERROR:", error)
-
+    except Exception:
         return {
             "success": False,
-            "error": str(error)
+            "error": "Unable to index database schema."
         }
 
 
@@ -200,9 +166,7 @@ def retrieve_schema(
     query: str,
     _: None = Depends(verify_internal_key)
 ):
-    
     try:
-
         results = retrieve_relevant_schema(query)
 
         return {
@@ -210,11 +174,10 @@ def retrieve_schema(
             "results": results
         }
 
-    except Exception as error:
-
+    except Exception:
         return {
             "success": False,
-            "error": str(error)
+            "error": "Unable to retrieve relevant schema."
         }
 
 
@@ -227,21 +190,16 @@ def generate_sql_endpoint(
     request: SQLRequest,
     _: None = Depends(verify_internal_key)
 ):
-
     try:
-
-        result = generate_sql(
+        return generate_sql(
             request.query,
             request.schema
         )
 
-        return result
-
-    except Exception as error:
-
+    except Exception:
         return {
             "success": False,
-            "error": str(error)
+            "error": "Unable to generate SQL."
         }
 
 
@@ -254,24 +212,13 @@ def query_database(
     request: QueryRequest,
     _: None = Depends(verify_internal_key)
 ):
-
     try:
+        return process_query(request.query)
 
-        result = process_query(request.query)
-        return result
-
-    except Exception as error:
-
-        print("❌❌❌ QUERY ERROR ❌❌❌")
-        print("ERROR:", error)
-
-        import traceback
-
-        traceback.print_exc()
-
+    except Exception:
         return {
             "success": False,
-            "error": str(error)
+            "error": "Unable to process query."
         }
 
 
@@ -285,12 +232,10 @@ def validate_sql_endpoint(
     _: None = Depends(verify_internal_key)
 ):
     try:
-
         return validate_sql(sql)
 
-    except Exception as error:
-
+    except Exception:
         return {
             "valid": False,
-            "error": str(error)
+            "error": "Unable to validate SQL."
         }

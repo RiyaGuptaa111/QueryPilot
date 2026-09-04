@@ -1,4 +1,3 @@
-print("🔥🔥🔥 QUERY PIPELINE FILE LOADED 🔥🔥🔥")
 
 import time
 
@@ -13,9 +12,6 @@ from services.chart_validator import validate_chart
 
 
 def process_query(user_query: str):
-
-    print("🔥🔥🔥 PROCESS_QUERY CALLED 🔥🔥🔥")
-    print("QUERY:", user_query)
 
     start_time = time.perf_counter()
 
@@ -184,10 +180,6 @@ def process_query(user_query: str):
     # ========================================================
 
     execution = execute_query(sql)
-
-    print("🔥🔥🔥 EXECUTION RESULT 🔥🔥🔥")
-    print(execution)
-
 
     # ========================================================
     # 9. ORIGINAL SQL SUCCESS
