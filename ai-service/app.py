@@ -65,8 +65,6 @@ class QueryRequest(BaseModel):
 @app.get("/")
 def root():
 
-    print("🔥🔥🔥 ROOT ENDPOINT CALLED 🔥🔥🔥")
-
     return {
         "message": "QueryPilot AI Service is running 🤖"
     }
@@ -258,17 +256,9 @@ def query_database(
     _: None = Depends(verify_internal_key)
 ):
 
-    print("🔥🔥🔥 /QUERY ENDPOINT CALLED 🔥🔥🔥")
-    print("QUERY:", request.query)
-
     try:
 
-        print("🔥🔥🔥 CALLING PROCESS_QUERY 🔥🔥🔥")
-
         result = process_query(request.query)
-
-        print("🔥🔥🔥 PROCESS_QUERY RETURNED 🔥🔥🔥")
-
         return result
 
     except Exception as error:

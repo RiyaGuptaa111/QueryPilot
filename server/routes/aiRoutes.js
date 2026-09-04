@@ -6,8 +6,7 @@ import axios from "axios";
 const router = express.Router();
 
 const AI_SERVICE_URL =
-    process.env.AI_SERVICE_URL ||
-    "http://127.0.0.1:8000";
+    process.env.AI_SERVICE_URL;
 
 
 // ============================================================

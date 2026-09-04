@@ -38,30 +38,8 @@ export default function DatabaseExplorer() {
 
             const data = await getSchema();
 
-            console.log(
-                "========== DATABASE SCHEMA =========="
-            );
-
-            console.log(
-                "RAW SCHEMA RESPONSE:",
-                data
-            );
 
             const tables = normalizeSchema(data);
-
-            console.log(
-                "NORMALIZED TABLES:",
-                tables
-            );
-
-            console.log(
-                "TABLE COUNT:",
-                tables.length
-            );
-
-            console.log(
-                "====================================="
-            );
 
             setSchema(tables);
 

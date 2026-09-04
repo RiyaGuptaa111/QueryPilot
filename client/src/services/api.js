@@ -2,11 +2,20 @@ import axios from "axios";
 
 
 // ============================================================
+// API BASE URL
+// ============================================================
+
+const BASE_URL =
+    import.meta.env.VITE_API_URL ||
+    "http://localhost:4000/api";
+
+
+// ============================================================
 // AI API
 // ============================================================
 
 const API = axios.create({
-    baseURL: "http://localhost:4000/api/ai",
+    baseURL: `${BASE_URL}/ai`,
     headers: {
         "Content-Type": "application/json",
     },
@@ -18,7 +27,7 @@ const API = axios.create({
 // ============================================================
 
 const AUTH_API = axios.create({
-    baseURL: "http://localhost:4000/api/auth",
+    baseURL: `${BASE_URL}/auth`,
     headers: {
         "Content-Type": "application/json",
     },
@@ -41,8 +50,6 @@ export const runQuery = async (query) => {
         "querypilot_token"
     );
 
-    console.log("JWT TOKEN:", token);
-    
     if (!token) {
         throw new Error(
             "Authentication required. Please login again."
