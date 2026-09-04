@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -10,16 +9,58 @@ from services.schema_rag import (
 )
 from services.query_pipeline import process_query
 from services.sql_validator import validate_sql
+from services.database import get_db_connection
+
+import os
+
+from fastapi import FastAPI, Header, HTTPException, Depends
 
 app = FastAPI(title="QueryPilot AI Service")
+
+
+AI_SERVICE_KEY = os.getenv("AI_SERVICE_KEY")
+
+
+def verify_internal_key(
+    x_internal_key: str = Header(None)
+):
+    print(
+        "FASTAPI KEY RECEIVED:",
+        bool(x_internal_key)
+    )
+
+    if not AI_SERVICE_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="AI service key is not configured."
+        )
+
+    if x_internal_key != AI_SERVICE_KEY:
+        print("❌ INTERNAL KEY MISMATCH")
+
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized AI service request."
+        )
+
+    print("✅ INTERNAL KEY VERIFIED")
+
+    
 print("🔥🔥🔥 APP.PY LOADED 🔥🔥🔥")
+
 
 class SQLRequest(BaseModel):
     query: str
     schema: str
 
+
 class QueryRequest(BaseModel):
     query: str
+
+
+# ============================================================
+# ROOT
+# ============================================================
 
 @app.get("/")
 def root():
@@ -30,53 +71,192 @@ def root():
         "message": "QueryPilot AI Service is running 🤖"
     }
 
+
+# ============================================================
+# AI SERVICE HEALTH
+# ============================================================
+
 @app.get("/health")
-def health():
+def health(
+    _: None = Depends(verify_internal_key)
+):
+
     return {
-        "status": "healthy"
+        "status": "healthy",
+        "service": "QueryPilot AI Service"
     }
 
+
+# ============================================================
+# DATABASE HEALTH
+# ============================================================
+
+@app.get("/database-health")
+def database_health(
+    _: None = Depends(verify_internal_key)
+):
+
+    connection = None
+    cursor = None
+
+    try:
+
+        connection = get_db_connection()
+
+        cursor = connection.cursor()
+
+        cursor.execute("SELECT 1")
+
+        cursor.fetchone()
+
+        return {
+            "success": True,
+            "status": "connected",
+            "database": "PostgreSQL"
+        }
+
+    except Exception as error:
+
+        print("❌ DATABASE HEALTH ERROR:", error)
+
+        return {
+            "success": False,
+            "status": "disconnected",
+            "database": "PostgreSQL",
+            "error": str(error)
+        }
+
+    finally:
+
+        try:
+
+            if cursor:
+                cursor.close()
+
+            if connection:
+                connection.close()
+
+        except Exception:
+            pass
+
+
+# ============================================================
+# DATABASE SCHEMA
+# ============================================================
 
 @app.get("/schema")
-def schema():
+def schema(
+    _: None = Depends(verify_internal_key)
+):
 
-    return {
-        "success": True,
-        "schema": get_database_schema()
-    }
+    try:
 
+        database_schema = get_database_schema()
+
+        return {
+            "success": True,
+            "schema": database_schema
+        }
+
+    except Exception as error:
+
+        print("❌ SCHEMA ERROR:", error)
+
+        return {
+            "success": False,
+            "schema": {},
+            "error": str(error)
+        }
+
+
+# ============================================================
+# INDEX DATABASE SCHEMA
+# ============================================================
 
 @app.post("/index-schema")
-def index_database_schema():
+def index_database_schema(
+    _: None = Depends(verify_internal_key)
+):
 
-    schema = get_database_schema()
+    try:
 
-    return index_schema(schema)
+        database_schema = get_database_schema()
 
+        return index_schema(database_schema)
+
+    except Exception as error:
+
+        print("❌ INDEX SCHEMA ERROR:", error)
+
+        return {
+            "success": False,
+            "error": str(error)
+        }
+
+
+# ============================================================
+# RETRIEVE RELEVANT SCHEMA
+# ============================================================
 
 @app.get("/retrieve-schema")
-def retrieve_schema(query: str):
+def retrieve_schema(
+    query: str,
+    _: None = Depends(verify_internal_key)
+):
+    
+    try:
 
-    results = retrieve_relevant_schema(query)
+        results = retrieve_relevant_schema(query)
 
-    return {
-        "query": query,
-        "results": results
-    }
+        return {
+            "query": query,
+            "results": results
+        }
 
+    except Exception as error:
+
+        return {
+            "success": False,
+            "error": str(error)
+        }
+
+
+# ============================================================
+# GENERATE SQL
+# ============================================================
 
 @app.post("/generate-sql")
-def generate_sql_endpoint(request: SQLRequest):
+def generate_sql_endpoint(
+    request: SQLRequest,
+    _: None = Depends(verify_internal_key)
+):
 
-    result = generate_sql(
-        request.query,
-        request.schema
-    )
+    try:
 
-    return result
+        result = generate_sql(
+            request.query,
+            request.schema
+        )
+
+        return result
+
+    except Exception as error:
+
+        return {
+            "success": False,
+            "error": str(error)
+        }
+
+
+# ============================================================
+# MAIN QUERY PIPELINE
+# ============================================================
 
 @app.post("/query")
-def query_database(request: QueryRequest):
+def query_database(
+    request: QueryRequest,
+    _: None = Depends(verify_internal_key)
+):
 
     print("🔥🔥🔥 /QUERY ENDPOINT CALLED 🔥🔥🔥")
     print("QUERY:", request.query)
@@ -97,14 +277,31 @@ def query_database(request: QueryRequest):
         print("ERROR:", error)
 
         import traceback
+
         traceback.print_exc()
 
         return {
             "success": False,
             "error": str(error)
         }
-    
-@app.get("/validate-sql")
-def validate_sql_endpoint(sql: str):
 
-    return validate_sql(sql)
+
+# ============================================================
+# VALIDATE SQL
+# ============================================================
+
+@app.get("/validate-sql")
+def validate_sql_endpoint(
+    sql: str,
+    _: None = Depends(verify_internal_key)
+):
+    try:
+
+        return validate_sql(sql)
+
+    except Exception as error:
+
+        return {
+            "valid": False,
+            "error": str(error)
+        }

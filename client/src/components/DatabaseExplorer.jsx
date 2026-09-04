@@ -9,8 +9,6 @@ import {
     Table2,
 } from "lucide-react";
 
-// import DatabaseExplorer from "../pages/DatabaseExplorer";
-
 import { useEffect, useState } from "react";
 
 import { getSchema } from "../services/api";
@@ -27,6 +25,10 @@ export default function DatabaseExplorer() {
     const [expanded, setExpanded] = useState({});
 
 
+    // ============================================================
+    // LOAD DATABASE SCHEMA
+    // ============================================================
+
     const loadSchema = async () => {
 
         try {
@@ -36,41 +38,37 @@ export default function DatabaseExplorer() {
 
             const data = await getSchema();
 
-            console.log("SCHEMA RESPONSE:", data);
+            console.log(
+                "========== DATABASE SCHEMA =========="
+            );
 
+            console.log(
+                "RAW SCHEMA RESPONSE:",
+                data
+            );
 
-            /*
-             * Handle all possible backend formats.
-             */
+            const tables = normalizeSchema(data);
 
-            let tables = [];
+            console.log(
+                "NORMALIZED TABLES:",
+                tables
+            );
 
+            console.log(
+                "TABLE COUNT:",
+                tables.length
+            );
 
-            if (Array.isArray(data)) {
-
-                tables = data;
-
-            } else if (Array.isArray(data?.schema)) {
-
-                tables = data.schema;
-
-            } else if (Array.isArray(data?.schema?.tables)) {
-
-                tables = data.schema.tables;
-
-            } else if (Array.isArray(data?.results)) {
-
-                tables = data.results;
-
-            }
-
+            console.log(
+                "====================================="
+            );
 
             setSchema(tables);
 
         } catch (err) {
 
             console.error(
-                "Schema error:",
+                "❌ SCHEMA ERROR:",
                 err
             );
 
@@ -97,20 +95,32 @@ export default function DatabaseExplorer() {
     }, []);
 
 
+    // ============================================================
+    // TOGGLE TABLE
+    // ============================================================
+
     const toggleTable = (tableName) => {
 
         setExpanded((previous) => ({
+
             ...previous,
+
             [tableName]:
                 !previous[tableName],
+
         }));
 
     };
 
 
+    // ============================================================
+    // LOADING
+    // ============================================================
+
     if (loading) {
 
         return (
+
             <section className="card schema-page">
 
                 <div className="schema-loading">
@@ -125,14 +135,20 @@ export default function DatabaseExplorer() {
                 </div>
 
             </section>
+
         );
 
     }
 
 
+    // ============================================================
+    // ERROR
+    // ============================================================
+
     if (error) {
 
         return (
+
             <section className="card schema-page">
 
                 <div className="schema-error">
@@ -150,6 +166,7 @@ export default function DatabaseExplorer() {
                     <button
                         className="run-button"
                         onClick={loadSchema}
+                        type="button"
                     >
 
                         <RefreshCw size={15} />
@@ -161,10 +178,15 @@ export default function DatabaseExplorer() {
                 </div>
 
             </section>
+
         );
 
     }
 
+
+    // ============================================================
+    // DATABASE EXPLORER
+    // ============================================================
 
     return (
 
@@ -197,6 +219,8 @@ export default function DatabaseExplorer() {
                     className="icon-button"
                     onClick={loadSchema}
                     title="Refresh schema"
+                    aria-label="Refresh schema"
+                    type="button"
                 >
 
                     <RefreshCw size={16} />
@@ -211,6 +235,10 @@ export default function DatabaseExplorer() {
                 <span className="status-dot" />
 
                 Connected to PostgreSQL
+
+                <span className="schema-table-count">
+                    {schema.length} tables
+                </span>
 
             </div>
 
@@ -228,8 +256,21 @@ export default function DatabaseExplorer() {
                         </h3>
 
                         <p>
-                            No database tables were returned.
+                            The PostgreSQL database returned
+                            no table information.
                         </p>
+
+                        <button
+                            className="run-button"
+                            onClick={loadSchema}
+                            type="button"
+                        >
+
+                            <RefreshCw size={15} />
+
+                            Refresh
+
+                        </button>
 
                     </div>
 
@@ -238,7 +279,10 @@ export default function DatabaseExplorer() {
                     schema.map((table, index) => {
 
                         const parsed =
-                            parseTable(table, index);
+                            parseTable(
+                                table,
+                                index
+                            );
 
 
                         return (
@@ -271,9 +315,156 @@ export default function DatabaseExplorer() {
 }
 
 
-/* ============================================================
-   PARSE TABLE
-============================================================ */
+// ============================================================
+// NORMALIZE SCHEMA RESPONSE
+// ============================================================
+
+function normalizeSchema(data) {
+
+    if (!data) {
+        return [];
+    }
+
+
+    // Direct array
+
+    if (Array.isArray(data)) {
+
+        return data;
+
+    }
+
+
+    // { schema: [...] }
+
+    if (Array.isArray(data.schema)) {
+
+        return data.schema;
+
+    }
+
+
+    // { schema: { tables: [...] } }
+
+    if (
+        data.schema &&
+        Array.isArray(data.schema.tables)
+    ) {
+
+        return data.schema.tables;
+
+    }
+
+
+    // ============================================================
+    // ACTUAL QUERY PILOT RESPONSE
+    //
+    // {
+    //     success: true,
+    //     schema: {
+    //         departments: {...},
+    //         employees: {...}
+    //     }
+    // }
+    // ============================================================
+
+    if (
+        data.schema &&
+        typeof data.schema === "object" &&
+        !Array.isArray(data.schema)
+    ) {
+
+        return Object.entries(
+            data.schema
+        ).map(
+            ([tableName, tableData]) => ({
+
+                table_name: tableName,
+
+                columns:
+                    Array.isArray(
+                        tableData?.columns
+                    )
+                        ? tableData.columns
+                        : [],
+
+                relationships:
+                    Array.isArray(
+                        tableData?.relationships
+                    )
+                        ? tableData.relationships
+                        : [],
+
+            })
+        );
+
+    }
+
+
+    // { tables: [...] }
+
+    if (Array.isArray(data.tables)) {
+
+        return data.tables;
+
+    }
+
+
+    // { results: [...] }
+
+    if (Array.isArray(data.results)) {
+
+        return data.results;
+
+    }
+
+
+    // { data: [...] }
+
+    if (Array.isArray(data.data)) {
+
+        return data.data;
+
+    }
+
+
+    // { data: { schema: [...] } }
+
+    if (
+        data.data &&
+        Array.isArray(data.data.schema)
+    ) {
+
+        return data.data.schema;
+
+    }
+
+
+    // { data: { tables: [...] } }
+
+    if (
+        data.data &&
+        Array.isArray(data.data.tables)
+    ) {
+
+        return data.data.tables;
+
+    }
+
+
+    console.warn(
+        "⚠️ Unknown schema response format:",
+        data
+    );
+
+    return [];
+
+}
+
+
+// ============================================================
+// PARSE TABLE
+// ============================================================
 
 function parseTable(table, index) {
 
@@ -286,14 +477,24 @@ function parseTable(table, index) {
 
             name:
                 table.table_name ||
+                table.table ||
                 table.name ||
+                table.TABLE_NAME ||
                 `Table ${index + 1}`,
 
             columns:
-                table.columns || [],
+                Array.isArray(table.columns)
+                    ? table.columns
+                    : Array.isArray(table.fields)
+                        ? table.fields
+                        : [],
 
             relationships:
-                table.relationships || [],
+                Array.isArray(
+                    table.relationships
+                )
+                    ? table.relationships
+                    : [],
 
         };
 
@@ -305,7 +506,7 @@ function parseTable(table, index) {
 
     const tableMatch =
         text.match(
-            /TABLE:\s*(.+)/
+            /TABLE:\s*(.+)/i
         );
 
 
@@ -320,8 +521,9 @@ function parseTable(table, index) {
 
     const columnSection =
         text
-            .split("COLUMNS:")[1]
-            ?.split("RELATIONSHIPS:")[0] || "";
+            .split(/COLUMNS:/i)[1]
+            ?.split(/RELATIONSHIPS:/i)[0] ||
+        "";
 
 
     columnSection
@@ -352,7 +554,9 @@ function parseTable(table, index) {
 
 
     const relationshipSection =
-        text.split("RELATIONSHIPS:")[1] || "";
+        text
+            .split(/RELATIONSHIPS:/i)[1] ||
+        "";
 
 
     const relationships =
@@ -380,9 +584,74 @@ function parseTable(table, index) {
 }
 
 
-/* ============================================================
-   TABLE CARD
-============================================================ */
+// ============================================================
+// FORMAT RELATIONSHIP
+// ============================================================
+
+function formatRelationship(relationship) {
+
+    if (
+        typeof relationship === "string"
+    ) {
+
+        return relationship;
+
+    }
+
+
+    if (
+        typeof relationship === "object" &&
+        relationship !== null
+    ) {
+
+        const column =
+            relationship.column ||
+            relationship.column_name ||
+            "";
+
+
+        const referencedTable =
+            relationship.references_table ||
+            relationship.referenced_table ||
+            "";
+
+
+        const referencedColumn =
+            relationship.references_column ||
+            relationship.referenced_column ||
+            "";
+
+
+        if (
+            column &&
+            referencedTable &&
+            referencedColumn
+        ) {
+
+            return (
+                `${column} → ` +
+                `${referencedTable}.` +
+                `${referencedColumn}`
+            );
+
+        }
+
+
+        return JSON.stringify(
+            relationship
+        );
+
+    }
+
+
+    return String(relationship);
+
+}
+
+
+// ============================================================
+// TABLE CARD
+// ============================================================
 
 function TableSchemaCard({
     table,
@@ -397,19 +666,27 @@ function TableSchemaCard({
             <button
                 className="schema-table-header"
                 onClick={onToggle}
+                type="button"
             >
 
                 {expanded ? (
+
                     <ChevronDown size={16} />
+
                 ) : (
+
                     <ChevronRight size={16} />
+
                 )}
 
+
                 <Table2 size={17} />
+
 
                 <strong>
                     {table.name}
                 </strong>
+
 
                 <span>
                     {table.columns.length} columns
@@ -422,70 +699,84 @@ function TableSchemaCard({
 
                 <div className="schema-table-body">
 
-                    <div className="schema-columns">
+                    {table.columns.length > 0 ? (
 
-                        {table.columns.map(
-                            (column, index) => {
+                        <div className="schema-columns">
 
-                                const name =
-                                    typeof column === "string"
-                                        ? column
-                                        : column.name ||
-                                          column.column_name ||
-                                          "column";
+                            {table.columns.map(
+                                (column, index) => {
 
-
-                                const type =
-                                    typeof column === "string"
-                                        ? ""
-                                        : column.type ||
-                                          column.data_type ||
-                                          "";
+                                    const name =
+                                        typeof column === "string"
+                                            ? column
+                                            : column.name ||
+                                              column.column_name ||
+                                              column.COLUMN_NAME ||
+                                              "column";
 
 
-                                return (
+                                    const type =
+                                        typeof column === "string"
+                                            ? ""
+                                            : column.type ||
+                                              column.data_type ||
+                                              column.DATA_TYPE ||
+                                              "";
 
-                                    <div
-                                        className="schema-column"
-                                        key={`${name}-${index}`}
-                                    >
 
-                                        <span className="column-icon">
+                                    return (
 
-                                            {name
-                                                .toLowerCase()
-                                                .includes("id")
-                                                ? (
+                                        <div
+                                            className="schema-column"
+                                            key={`${name}-${index}`}
+                                        >
+
+                                            <span className="column-icon">
+
+                                                {name
+                                                    .toLowerCase()
+                                                    .includes("id") ? (
+
                                                     <KeyRound
                                                         size={13}
                                                     />
-                                                )
-                                                : (
+
+                                                ) : (
+
                                                     <Table2
                                                         size={13}
                                                     />
+
                                                 )}
 
-                                        </span>
+                                            </span>
 
 
-                                        <span className="column-name">
-                                            {name}
-                                        </span>
+                                            <span className="column-name">
+                                                {name}
+                                            </span>
 
 
-                                        <span className="column-type">
-                                            {type}
-                                        </span>
+                                            <span className="column-type">
+                                                {type}
+                                            </span>
 
-                                    </div>
+                                        </div>
 
-                                );
+                                    );
 
-                            }
-                        )}
+                                }
+                            )}
 
-                    </div>
+                        </div>
+
+                    ) : (
+
+                        <p className="empty-answer">
+                            No column information available.
+                        </p>
+
+                    )}
 
 
                     {table.relationships?.length > 0 && (
@@ -508,7 +799,11 @@ function TableSchemaCard({
                                         key={index}
                                         className="relationship"
                                     >
-                                        {relationship}
+
+                                        {formatRelationship(
+                                            relationship
+                                        )}
+
                                     </div>
 
                                 )

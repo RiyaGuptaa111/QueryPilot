@@ -8,8 +8,10 @@ import {
     Code2,
     Copy,
     Database,
+    Download,
     History,
     LayoutDashboard,
+    LogOut,
     Loader2,
     Moon,
     MoreHorizontal,
@@ -41,6 +43,7 @@ import {
 import { runQuery } from "../services/api";
 import QueryHistory from "./QueryHistory";
 import DatabaseExplorer from "./DatabaseExplorer";
+import SettingsPage from "../pages/Settings";
 
 
 // ============================================================
@@ -51,7 +54,10 @@ function Sidebar({
     active,
     setActive,
     onNewQuery,
+    user,
+    onLogout,
 }) {
+
     const items = [
         {
             label: "Overview",
@@ -132,11 +138,14 @@ function Sidebar({
 
             <div className="sidebar-bottom">
 
+                {/* DATABASE CONNECTION */}
+
                 <div className="connection">
 
                     <span className="status-dot" />
 
                     <div>
+
                         <strong>
                             QueryPilot DB
                         </strong>
@@ -144,6 +153,7 @@ function Sidebar({
                         <small>
                             PostgreSQL
                         </small>
+
                     </div>
 
                     <MoreHorizontal size={16} />
@@ -151,21 +161,38 @@ function Sidebar({
                 </div>
 
 
+                {/* USER PROFILE */}
+
                 <div className="profile">
 
                     <span className="avatar">
                         <UserRound size={16} />
                     </span>
 
-                    <div>
+
+                    <div className="profile-info">
+
                         <strong>
-                            QueryPilot User
+                            {user?.name || "QueryPilot User"}
                         </strong>
 
                         <small>
                             AI workspace
                         </small>
+
                     </div>
+
+
+                    <button
+                        className="logout-button"
+                        onClick={onLogout}
+                        title="Logout"
+                        aria-label="Logout"
+                    >
+
+                        <LogOut size={16} />
+
+                    </button>
 
                 </div>
 
@@ -369,11 +396,13 @@ function AIResponse({
                     <>
 
                         <p className="ai-answer">
+
                             {result.answer ||
                                 result.explanation ||
                                 (result.rows?.length
                                     ? "Query executed successfully. Results are shown below."
                                     : "Query executed successfully.")}
+
                         </p>
 
 
@@ -407,8 +436,13 @@ function AIResponse({
                 <div className="response-meta">
 
                     <span>
+
                         <Clock3 size={13} />
-                        Query processed
+
+                        {result.execution_time !== undefined
+                            ? `Query processed in ${result.execution_time}s`
+                            : "Query processed"}
+
                     </span>
 
 
@@ -442,25 +476,20 @@ function SQLCard({
     corrected,
 }) {
 
-    const displaySQL =
-        sql ||
-        "";
-
     const [copied, setCopied] =
         useState(false);
 
-  if (!displaySQL) {
-    return null;
-}
+
+    if (!sql) {
+        return null;
+    }
 
 
     const copySQL = async () => {
 
         try {
 
-           await navigator.clipboard.writeText(
-    displaySQL
-);
+            await navigator.clipboard.writeText(sql);
 
             setCopied(true);
 
@@ -469,7 +498,9 @@ function SQLCard({
             }, 1500);
 
         } catch (error) {
+
             console.error(error);
+
         }
 
     };
@@ -483,8 +514,11 @@ function SQLCard({
                 <div>
 
                     <div className="section-kicker">
+
                         <Code2 size={15} />
+
                         Generated SQL
+
                     </div>
 
 
@@ -521,9 +555,11 @@ function SQLCard({
 
 
             <pre>
+
                 <code>
-                    {displaySQL}
+                    {sql}
                 </code>
+
             </pre>
 
         </section>
@@ -535,7 +571,13 @@ function SQLCard({
 // RESULTS TABLE
 // ============================================================
 
-function ResultsTable({ result }) {
+function ResultsTable({
+    result,
+}) {
+
+    const [copied, setCopied] =
+        useState(false);
+
 
     if (
         !result ||
@@ -550,7 +592,143 @@ function ResultsTable({ result }) {
         Array.isArray(result.columns) &&
         result.columns.length > 0
             ? result.columns
-            : Object.keys(result.rows[0] || {});
+            : Object.keys(
+                result.rows[0] || {}
+            );
+
+
+    const convertToCSV = () => {
+
+        const header =
+            columns.join(",");
+
+
+        const rows =
+            result.rows.map((row) => {
+
+                return columns
+                    .map((column) => {
+
+                        const value =
+                            row[column];
+
+                        if (
+                            value === null ||
+                            value === undefined
+                        ) {
+                            return "";
+                        }
+
+                        const text =
+                            typeof value === "object"
+                                ? JSON.stringify(value)
+                                : String(value);
+
+                        return `"${text.replace(
+                            /"/g,
+                            '""'
+                        )}"`;
+
+                    })
+                    .join(",");
+
+            });
+
+
+        return [
+            header,
+            ...rows,
+        ].join("\n");
+
+    };
+
+
+    const downloadCSV = () => {
+
+        const csv =
+            convertToCSV();
+
+
+        const blob =
+            new Blob(
+                [csv],
+                {
+                    type:
+                        "text/csv;charset=utf-8;",
+                }
+            );
+
+
+        const url =
+            URL.createObjectURL(blob);
+
+
+        const link =
+            document.createElement("a");
+
+
+        link.href = url;
+
+        link.download =
+            "querypilot-results.csv";
+
+
+        document.body.appendChild(link);
+
+        link.click();
+
+        document.body.removeChild(link);
+
+        URL.revokeObjectURL(url);
+
+    };
+
+
+    const copyResults = async () => {
+
+        try {
+
+            const text = [
+
+                columns.join("\t"),
+
+                ...result.rows.map(
+                    (row) =>
+                        columns
+                            .map(
+                                (column) =>
+                                    formatValue(
+                                        row[column]
+                                    )
+                            )
+                            .join("\t")
+                ),
+
+            ].join("\n");
+
+
+            await navigator.clipboard.writeText(
+                text
+            );
+
+
+            setCopied(true);
+
+
+            setTimeout(() => {
+                setCopied(false);
+            }, 1500);
+
+        } catch (error) {
+
+            console.error(
+                "Copy results failed:",
+                error
+            );
+
+        }
+
+    };
 
 
     return (
@@ -561,17 +739,54 @@ function ResultsTable({ result }) {
                 <div>
 
                     <div className="section-kicker">
+
                         <Table2 size={15} />
+
                         Query results
+
                     </div>
 
                     <h3>
+
                         {result.rows.length}{" "}
+
                         {result.rows.length === 1
                             ? "row"
                             : "rows"}{" "}
+
                         returned
+
                     </h3>
+
+                </div>
+
+
+                <div className="result-actions">
+
+                    <button
+                        className="icon-button"
+                        onClick={copyResults}
+                        title="Copy results"
+                    >
+
+                        {copied ? (
+                            <Check size={15} />
+                        ) : (
+                            <Copy size={15} />
+                        )}
+
+                    </button>
+
+
+                    <button
+                        className="icon-button"
+                        onClick={downloadCSV}
+                        title="Download CSV"
+                    >
+
+                        <Download size={15} />
+
+                    </button>
 
                 </div>
 
@@ -601,23 +816,29 @@ function ResultsTable({ result }) {
 
                     <tbody>
 
-                        {result.rows.map((row, index) => (
+                        {result.rows.map(
+                            (row, index) => (
 
-                            <tr key={index}>
+                                <tr key={index}>
 
-                                {columns.map((column) => (
+                                    {columns.map(
+                                        (column) => (
 
-                                    <td key={column}>
-                                        {formatValue(
-                                            row[column]
-                                        )}
-                                    </td>
+                                            <td key={column}>
 
-                                ))}
+                                                {formatValue(
+                                                    row[column]
+                                                )}
 
-                            </tr>
+                                            </td>
 
-                        ))}
+                                        )
+                                    )}
+
+                                </tr>
+
+                            )
+                        )}
 
                     </tbody>
 
@@ -644,37 +865,8 @@ function formatValue(value) {
     }
 
 
-    if (typeof value === "boolean") {
-        return value ? "true" : "false";
-    }
-
-
-    if (typeof value === "number") {
-
-        return Number.isFinite(value)
-            ? value.toLocaleString()
-            : String(value);
-
-    }
-
-
-    if (value instanceof Date) {
-        return value.toLocaleString();
-    }
-
-
     if (typeof value === "object") {
-
-        try {
-
-            return JSON.stringify(value);
-
-        } catch {
-
-            return String(value);
-
-        }
-
+        return JSON.stringify(value);
     }
 
 
@@ -686,7 +878,9 @@ function formatValue(value) {
 // VISUALIZATION
 // ============================================================
 
-function Visualization({ result }) {
+function Visualization({
+    result,
+}) {
 
     const [mode, setMode] =
         useState("chart");
@@ -710,26 +904,37 @@ function Visualization({ result }) {
     }
 
 
-    const chart = result.chart;
-
-    const xAxis = chart.x_axis;
-    const yAxis = chart.y_axis;
+    const chart =
+        result.chart;
 
 
-    // TASK 8
+    const xAxis =
+        chart.x_axis;
+
+
+    const yAxis =
+        chart.y_axis;
+
+
     if (!xAxis || !yAxis) {
 
         return (
             <section className="card viz-card">
 
                 <div className="section-kicker">
+
                     <BarChart3 size={15} />
+
                     Visualization
+
                 </div>
 
+
                 <p className="empty-answer">
+
                     This query does not have enough
                     data dimensions for a chart.
+
                 </p>
 
             </section>
@@ -738,40 +943,43 @@ function Visualization({ result }) {
     }
 
 
-    // TASK 7
-    const chartData = result.rows.map((row) => {
+    const chartData =
+        result.rows.map((row) => {
 
-        const formattedRow = {
-            ...row,
-        };
+            const formattedRow = {
+                ...row,
+            };
 
-        if (
-            yAxis &&
-            formattedRow[yAxis] !== undefined &&
-            formattedRow[yAxis] !== null
-        ) {
 
-            const numericValue =
-                Number(formattedRow[yAxis]);
+            if (
+                yAxis &&
+                formattedRow[yAxis] !== undefined &&
+                formattedRow[yAxis] !== null
+            ) {
 
-            if (!Number.isNaN(numericValue)) {
+                const numericValue =
+                    Number(
+                        formattedRow[yAxis]
+                    );
 
-                formattedRow[yAxis] =
-                    numericValue;
+
+                if (
+                    !Number.isNaN(
+                        numericValue
+                    )
+                ) {
+
+                    formattedRow[yAxis] =
+                        numericValue;
+
+                }
 
             }
 
-        }
 
-        return formattedRow;
+            return formattedRow;
 
-    });
-
-    console.log("📊 VISUALIZATION RESULT:", result);
-    console.log("📊 CHART:", result.chart);
-    console.log("📊 CHART DATA:", chartData);
-    console.log("📊 X AXIS:", xAxis);
-    console.log("📊 Y AXIS:", yAxis);
+        });
 
 
     return (
@@ -782,13 +990,19 @@ function Visualization({ result }) {
                 <div>
 
                     <div className="section-kicker">
+
                         <BarChart3 size={15} />
+
                         Visualization
+
                     </div>
 
+
                     <h3>
+
                         {chart.title ||
                             "Query Results"}
+
                     </h3>
 
                 </div>
@@ -806,8 +1020,11 @@ function Visualization({ result }) {
                             setMode("chart")
                         }
                     >
+
                         <BarChart3 size={15} />
+
                         Chart
+
                     </button>
 
 
@@ -821,8 +1038,11 @@ function Visualization({ result }) {
                             setMode("table")
                         }
                     >
+
                         <Table2 size={15} />
+
                         Table
+
                     </button>
 
                 </div>
@@ -856,10 +1076,6 @@ function Visualization({ result }) {
 // DYNAMIC CHART
 // ============================================================
 
-// ============================================================
-// DYNAMIC CHART
-// ============================================================
-
 function DynamicChart({
     type,
     data,
@@ -867,118 +1083,83 @@ function DynamicChart({
     yAxis,
 }) {
 
-    console.log("📊 DYNAMIC CHART");
-    console.log("TYPE:", type);
-    console.log("DATA:", data);
-    console.log("X AXIS:", xAxis);
-    console.log("Y AXIS:", yAxis);
-
-
     if (
         !xAxis ||
         !yAxis ||
-        !Array.isArray(data) ||
-        data.length === 0
+        !data.length
     ) {
 
         return (
             <div className="empty-answer">
+
                 Unable to create visualization
                 from the returned columns.
+
             </div>
         );
 
     }
 
 
-    // ========================================================
-    // BAR CHART
-    // ========================================================
-
-    if (type === "bar") {
+    if (type === "pie") {
 
         return (
-            <div
-                className="chart-wrap"
-                style={{
-                    width: "100%",
-                    height: "360px",
-                    minHeight: "360px",
-                }}
-            >
+            <div className="chart-wrap">
 
                 <ResponsiveContainer
                     width="100%"
                     height="100%"
                 >
 
-                    <BarChart
-                        data={data}
-                        margin={{
-                            top: 20,
-                            right: 30,
-                            left: 20,
-                            bottom: 60,
-                        }}
-                    >
+                    <PieChart>
 
-                        <CartesianGrid
-                            strokeDasharray="3 3"
-                            vertical={false}
-                        />
+                        <Pie
+                            data={data}
+                            dataKey={yAxis}
+                            nameKey={xAxis}
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={100}
+                        >
 
-                        <XAxis
-                            dataKey={xAxis}
-                            tickLine={false}
-                            axisLine={false}
-                            angle={-20}
-                            textAnchor="end"
-                            interval={0}
-                        />
+                            {data.map(
+                                (_, index) => (
 
-                        <YAxis
-                            tickLine={false}
-                            axisLine={false}
-                            allowDecimals={false}
-                        />
+                                    <Cell
+                                        key={index}
+                                        fill={
+                                            [
+                                                "#6d7cff",
+                                                "#26c6da",
+                                                "#7c5cff",
+                                                "#f59e0b",
+                                                "#10b981",
+                                            ][
+                                                index % 5
+                                            ]
+                                        }
+                                    />
+
+                                )
+                            )}
+
+                        </Pie>
 
                         <Tooltip />
 
-                        <Bar
-                            dataKey={yAxis}
-                            radius={[
-                                5,
-                                5,
-                                0,
-                                0,
-                            ]}
-                        />
-
-                    </BarChart>
+                    </PieChart>
 
                 </ResponsiveContainer>
 
             </div>
         );
-
     }
 
-
-    // ========================================================
-    // LINE CHART
-    // ========================================================
 
     if (type === "line") {
 
         return (
-            <div
-                className="chart-wrap"
-                style={{
-                    width: "100%",
-                    height: "360px",
-                    minHeight: "360px",
-                }}
-            >
+            <div className="chart-wrap">
 
                 <ResponsiveContainer
                     width="100%"
@@ -987,12 +1168,6 @@ function DynamicChart({
 
                     <LineChart
                         data={data}
-                        margin={{
-                            top: 20,
-                            right: 30,
-                            left: 20,
-                            bottom: 20,
-                        }}
                     >
 
                         <CartesianGrid
@@ -1026,79 +1201,61 @@ function DynamicChart({
 
             </div>
         );
-
     }
 
 
-    // ========================================================
-    // PIE CHART
-    // ========================================================
-
-    if (type === "pie") {
+    if (type === "bar") {
 
         return (
-            <div
-                className="chart-wrap"
-                style={{
-                    width: "100%",
-                    height: "360px",
-                    minHeight: "360px",
-                }}
-            >
+            <div className="chart-wrap">
 
                 <ResponsiveContainer
                     width="100%"
                     height="100%"
                 >
 
-                    <PieChart>
+                    <BarChart
+                        data={data}
+                    >
 
-                        <Pie
-                            data={data}
-                            dataKey={yAxis}
-                            nameKey={xAxis}
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={110}
-                        >
+                        <CartesianGrid
+                            strokeDasharray="3 3"
+                            vertical={false}
+                        />
 
-                            {data.map((_, index) => (
+                        <XAxis
+                            dataKey={xAxis}
+                            tickLine={false}
+                            axisLine={false}
+                        />
 
-                                <Cell
-                                    key={index}
-                                    fill={
-                                        [
-                                            "#6d7cff",
-                                            "#26c6da",
-                                            "#7c5cff",
-                                            "#f59e0b",
-                                            "#10b981",
-                                        ][index % 5]
-                                    }
-                                />
-
-                            ))}
-
-                        </Pie>
+                        <YAxis
+                            tickLine={false}
+                            axisLine={false}
+                        />
 
                         <Tooltip />
 
-                    </PieChart>
+                        <Bar
+                            dataKey={yAxis}
+                            radius={[
+                                5,
+                                5,
+                                0,
+                                0,
+                            ]}
+                        />
+
+                    </BarChart>
 
                 </ResponsiveContainer>
 
             </div>
         );
-
     }
 
 
-    return (
-        <div className="empty-answer">
-            Unsupported chart type: {type}
-        </div>
-    );
-
+    return null;
 }
 
 
@@ -1106,7 +1263,10 @@ function DynamicChart({
 // MAIN DASHBOARD
 // ============================================================
 
-export default function QueryPilotDashboard() {
+export default function QueryPilotDashboard({
+    user,
+    onLogout,
+}) {
 
     const [active, setActive] =
         useState("Overview");
@@ -1128,8 +1288,31 @@ export default function QueryPilotDashboard() {
         useState(null);
 
 
+    // ========================================================
+    // THEME
+    // ========================================================
+
     const [dark, setDark] =
-        useState(true);
+        useState(() => {
+
+            const saved =
+                localStorage.getItem(
+                    "querypilot_theme"
+                );
+
+            return saved !== "light";
+
+        });
+
+
+    useEffect(() => {
+
+        localStorage.setItem(
+            "querypilot_theme",
+            dark ? "dark" : "light"
+        );
+
+    }, [dark]);
 
 
     // ========================================================
@@ -1181,7 +1364,9 @@ export default function QueryPilotDashboard() {
 
 
         setLoading(true);
+
         setError(null);
+
         setResult(null);
 
 
@@ -1191,27 +1376,89 @@ export default function QueryPilotDashboard() {
 
         try {
 
-            const data = await runQuery(currentQuery);
+            const data =
+                await runQuery(
+                    currentQuery
+                );
 
-            // TASK 5
-            console.log("========== QUERY RESULT ==========");
-            console.log("FULL RESPONSE:", data);
-            console.log("SUCCESS:", data?.success);
-            console.log("ANSWER:", data?.answer);
-            console.log("SUMMARY:", data?.summary);
-            console.log("SQL:", data?.sql);
-            console.log("ROWS:", data?.rows);
-            console.log("COLUMNS:", data?.columns);
-            console.log("CHART:", data?.chart);
-            console.log("CLARIFICATION:", data?.needs_clarification);
-            console.log("==================================");
+
+            console.log(
+                "========== QUERY RESULT =========="
+            );
+
+
+            console.log(
+                "FULL RESPONSE:",
+                data
+            );
+
+
+            console.log(
+                "SUCCESS:",
+                data?.success
+            );
+
+
+            console.log(
+                "ANSWER:",
+                data?.answer
+            );
+
+
+            console.log(
+                "SUMMARY:",
+                data?.summary
+            );
+
+
+            console.log(
+                "SQL:",
+                data?.sql
+            );
+
+
+            console.log(
+                "ROWS:",
+                data?.rows
+            );
+
+
+            console.log(
+                "COLUMNS:",
+                data?.columns
+            );
+
+
+            console.log(
+                "CHART:",
+                data?.chart
+            );
+
+
+            console.log(
+                "EXECUTION TIME:",
+                data?.execution_time
+            );
+
+
+            console.log(
+                "CLARIFICATION:",
+                data?.needs_clarification
+            );
+
+
+            console.log(
+                "=================================="
+            );
 
 
             setResult(data);
 
 
-            // SAVE ONLY ON SUCCESS
-            // This is the single history-saving block.
+            // ==================================================
+            // SAVE HISTORY
+            // ==================================================
+
             if (
                 data &&
                 data.success !== false
@@ -1221,9 +1468,11 @@ export default function QueryPilotDashboard() {
 
                     const newItem = {
 
-                        id: Date.now(),
+                        id:
+                            Date.now(),
 
-                        query: currentQuery,
+                        query:
+                            currentQuery,
 
                         answer:
                             data.answer ||
@@ -1231,13 +1480,20 @@ export default function QueryPilotDashboard() {
                             "Query completed successfully.",
 
                         sql:
-                            data.sql || "",
+                            data.sql ||
+                            "",
 
                         summary:
-                            data.summary || "",
+                            data.summary ||
+                            "",
 
                         chart:
-                            data.chart || null,
+                            data.chart ||
+                            null,
+
+                        execution_time:
+                            data.execution_time ||
+                            null,
 
                         timestamp:
                             new Date().toISOString(),
@@ -1245,21 +1501,20 @@ export default function QueryPilotDashboard() {
                     };
 
 
-                    const normalizedQuery =
-    currentQuery
-        .trim()
-        .toLowerCase();
+                    return [
 
-return [
-    newItem,
-    ...previous.filter(
-        (item) =>
-            item.query
-                ?.trim()
-                .toLowerCase() !==
-            normalizedQuery
-    ),
-].slice(0, 50);
+                        newItem,
+
+                        ...previous.filter(
+                            (item) =>
+                                item.query !==
+                                currentQuery
+                        ),
+
+                    ].slice(
+                        0,
+                        50
+                    );
 
                 });
 
@@ -1296,8 +1551,11 @@ return [
     const handleNewQuery = () => {
 
         setQuery("");
+
         setResult(null);
+
         setError(null);
+
         setActive("Overview");
 
     };
@@ -1325,6 +1583,25 @@ return [
 
 
     // ========================================================
+    // DELETE HISTORY
+    // ========================================================
+
+    const handleDeleteHistory = (
+        id
+    ) => {
+
+        setHistory(
+            (previous) =>
+                previous.filter(
+                    (item) =>
+                        item.id !== id
+                )
+        );
+
+    };
+
+
+    // ========================================================
     // CLEAR HISTORY
     // ========================================================
 
@@ -1338,16 +1615,6 @@ return [
 
     };
 
-    const handleDeleteHistory = (id) => {
-
-    setHistory((previous) =>
-        previous.filter(
-            (item) => item.id !== id
-        )
-    );
-
-};
-
 
     // ========================================================
     // KEYBOARD SHORTCUT
@@ -1355,12 +1622,17 @@ return [
 
     useEffect(() => {
 
-        const handleKeyDown = (event) => {
+        const handleKeyDown = (
+            event
+        ) => {
 
             if (
-                (event.ctrlKey ||
-                    event.metaKey) &&
-                event.key.toLowerCase() === "k"
+                (
+                    event.ctrlKey ||
+                    event.metaKey
+                ) &&
+                event.key.toLowerCase() ===
+                    "k"
             ) {
 
                 event.preventDefault();
@@ -1371,9 +1643,12 @@ return [
 
 
             if (
-                (event.ctrlKey ||
-                    event.metaKey) &&
-                event.key === "Enter"
+                (
+                    event.ctrlKey ||
+                    event.metaKey
+                ) &&
+                event.key ===
+                    "Enter"
             ) {
 
                 event.preventDefault();
@@ -1407,7 +1682,10 @@ return [
 
         };
 
-    }, [query, loading]);
+    }, [
+        query,
+        loading,
+    ]);
 
 
     // ========================================================
@@ -1428,6 +1706,8 @@ return [
                 active={active}
                 setActive={setActive}
                 onNewQuery={handleNewQuery}
+                user={user}
+                onLogout={onLogout}
             />
 
 
@@ -1438,11 +1718,16 @@ return [
                     <div>
 
                         <p className="eyebrow">
+
                             Workspace / {active}
+
                         </p>
 
+
                         <h1>
+
                             AI Database Copilot
+
                         </h1>
 
                     </div>
@@ -1487,10 +1772,6 @@ return [
                 <div className="content-grid">
 
 
-                    {/* ==================================================
-                        OVERVIEW
-                    ================================================== */}
-
                     {active === "Overview" && (
 
                         <>
@@ -1498,15 +1779,25 @@ return [
                             <QueryComposer
                                 query={query}
                                 setQuery={setQuery}
-                                onRun={handleRunQuery}
-                                loading={loading}
+                                onRun={
+                                    handleRunQuery
+                                }
+                                loading={
+                                    loading
+                                }
                             />
 
 
                             <AIResponse
-                                result={result}
-                                loading={loading}
-                                error={error}
+                                result={
+                                    result
+                                }
+                                loading={
+                                    loading
+                                }
+                                error={
+                                    error
+                                }
                             />
 
 
@@ -1516,7 +1807,9 @@ return [
                                     <>
 
                                         <SQLCard
-                                            sql={result.sql}
+                                            sql={
+                                                result.sql
+                                            }
                                             corrected={
                                                 result.sql_corrected
                                             }
@@ -1524,12 +1817,16 @@ return [
 
 
                                         <ResultsTable
-                                            result={result}
+                                            result={
+                                                result
+                                            }
                                         />
 
 
                                         <Visualization
-                                            result={result}
+                                            result={
+                                                result
+                                            }
                                         />
 
                                     </>
@@ -1541,31 +1838,25 @@ return [
                     )}
 
 
-                    {/* ==================================================
-                        QUERY HISTORY
-                    ================================================== */}
-
                     {active === "Query History" && (
 
                         <QueryHistory
-    history={history}
-    onSelect={
-        handleHistorySelect
-    }
-    onClear={
-        handleClearHistory
-    }
-    onDelete={
-        handleDeleteHistory
-    }
-/>
+                            history={
+                                history
+                            }
+                            onSelect={
+                                handleHistorySelect
+                            }
+                            onClear={
+                                handleClearHistory
+                            }
+                            onDelete={
+                                handleDeleteHistory
+                            }
+                        />
 
                     )}
 
-
-                    {/* ==================================================
-                        DATABASE
-                    ================================================== */}
 
                     {active === "Database" && (
 
@@ -1574,26 +1865,21 @@ return [
                     )}
 
 
-                    {/* ==================================================
-                        SETTINGS
-                    ================================================== */}
-
                     {active === "Settings" && (
 
-                        <section className="card coming-soon">
-
-                            <Settings size={24} />
-
-                            <h2>
-                                Settings
-                            </h2>
-
-                            <p>
-                                QueryPilot settings
-                                will be available here.
-                            </p>
-
-                        </section>
+                        <SettingsPage
+                            dark={dark}
+                            setDark={setDark}
+                            historyCount={
+                                history.length
+                            }
+                            onClearHistory={
+                                handleClearHistory
+                            }
+                            onLogout={
+                                onLogout
+                            }
+                        />
 
                     )}
 
@@ -1602,5 +1888,7 @@ return [
             </main>
 
         </div>
+
     );
+
 }

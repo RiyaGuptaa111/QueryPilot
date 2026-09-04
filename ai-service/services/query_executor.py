@@ -1,4 +1,14 @@
+import os
+
 from services.database import get_db_connection
+
+
+QUERY_TIMEOUT_MS = int(
+    os.getenv(
+        "QUERY_TIMEOUT_MS",
+        "10000"
+    )
+)
 
 
 def execute_query(sql: str):
@@ -8,7 +18,31 @@ def execute_query(sql: str):
 
     try:
 
+        # ========================================================
+        # READ-ONLY DATABASE SESSION
+        # ========================================================
+
+        connection.set_session(
+            readonly=True,
+            autocommit=False
+        )
+
+
+        # ========================================================
+        # QUERY TIMEOUT
+        # ========================================================
+
+        cursor.execute(
+            f"SET LOCAL statement_timeout = {QUERY_TIMEOUT_MS}"
+        )
+
+
+        # ========================================================
+        # EXECUTE QUERY
+        # ========================================================
+
         cursor.execute(sql)
+
 
         # Column names from returned table
         columns = [
@@ -16,16 +50,26 @@ def execute_query(sql: str):
             for description in cursor.description
         ]
 
+
         rows = cursor.fetchall()
+
 
         results = []
 
         for row in rows:
+
             results.append(
-                dict(zip(columns, row))
+                dict(
+                    zip(
+                        columns,
+                        row
+                    )
+                )
             )
 
+
         connection.commit()
+
 
         return {
             "success": True,
@@ -34,9 +78,11 @@ def execute_query(sql: str):
             "error": None
         }
 
+
     except Exception as error:
 
         connection.rollback()
+
 
         return {
             "success": False,
@@ -44,6 +90,7 @@ def execute_query(sql: str):
             "rows": [],
             "error": str(error)
         }
+
 
     finally:
 

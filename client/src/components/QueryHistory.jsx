@@ -4,38 +4,32 @@ import {
     Clock3,
     Code2,
     Database,
-    History,
     Play,
     Search,
     Trash2,
     X,
 } from "lucide-react";
 
-
 function formatDate(timestamp) {
-
     if (!timestamp) {
         return "";
     }
 
     try {
+        const date = new Date(timestamp);
 
-        return new Date(timestamp).toLocaleString(
-            [],
-            {
-                dateStyle: "medium",
-                timeStyle: "short",
-            }
-        );
+        if (Number.isNaN(date.getTime())) {
+            return "";
+        }
 
+        return date.toLocaleString([], {
+            dateStyle: "medium",
+            timeStyle: "short",
+        });
     } catch {
-
         return "";
-
     }
-
 }
-
 
 export default function QueryHistory({
     history = [],
@@ -43,37 +37,34 @@ export default function QueryHistory({
     onClear,
     onDelete,
 }) {
+    const [search, setSearch] = useState("");
 
-    const [search, setSearch] =
-        useState("");
-
+    const safeHistory = Array.isArray(history)
+        ? history
+        : [];
 
     const filteredHistory = useMemo(() => {
-
-        const searchText =
-            search.trim().toLowerCase();
+        const searchText = search
+            .trim()
+            .toLowerCase();
 
         if (!searchText) {
-            return history;
+            return safeHistory;
         }
 
-        return history.filter((item) =>
-            item.query
-                ?.toLowerCase()
+        return safeHistory.filter((item) =>
+            String(item?.query || "")
+                .toLowerCase()
                 .includes(searchText)
         );
-
-    }, [history, search]);
-
+    }, [safeHistory, search]);
 
     return (
-
         <section className="history-page">
 
             <div className="history-header">
 
                 <div>
-
                     <p className="eyebrow">
                         Workspace / Query History
                     </p>
@@ -86,27 +77,23 @@ export default function QueryHistory({
                         Review and rerun your previous
                         database queries.
                     </p>
-
                 </div>
 
-
-                {history.length > 0 && (
-
+                {safeHistory.length > 0 && (
                     <button
                         className="clear-history"
                         onClick={onClear}
+                        type="button"
                     >
                         <Trash2 size={15} />
                         Clear history
                     </button>
-
                 )}
 
             </div>
 
 
-            {history.length > 0 && (
-
+            {safeHistory.length > 0 && (
                 <div className="history-search">
 
                     <Search size={16} />
@@ -114,33 +101,29 @@ export default function QueryHistory({
                     <input
                         type="text"
                         value={search}
-                        onChange={(e) =>
-                            setSearch(e.target.value)
+                        onChange={(event) =>
+                            setSearch(event.target.value)
                         }
                         placeholder="Search previous queries..."
                         aria-label="Search previous queries"
                     />
 
                     {search && (
-
                         <button
                             className="history-search-clear"
-                            onClick={() =>
-                                setSearch("")
-                            }
+                            onClick={() => setSearch("")}
+                            type="button"
                             aria-label="Clear search"
                         >
                             <X size={15} />
                         </button>
-
                     )}
 
                 </div>
-
             )}
 
 
-            {history.length === 0 ? (
+            {safeHistory.length === 0 ? (
 
                 <div className="empty-history">
 
@@ -181,107 +164,110 @@ export default function QueryHistory({
 
                 <div className="history-list">
 
-                    {filteredHistory.map((item) => (
+                    {filteredHistory.map((item, index) => {
 
-                        <article
-                            className="history-item"
-                            key={item.id}
-                        >
+                        const itemId =
+                            item?.id ??
+                            `${item?.timestamp || "query"}-${index}`;
 
-                            <div className="history-icon">
-                                <Database size={17} />
-                            </div>
+                        return (
+                            <article
+                                className="history-item"
+                                key={itemId}
+                            >
 
-
-                            <div className="history-content">
-
-                                <h3>
-                                    {item.query}
-                                </h3>
+                                <div className="history-icon">
+                                    <Database size={17} />
+                                </div>
 
 
-                                <p>
-                                    {item.answer ||
-                                        "Query completed successfully."}
-                                </p>
+                                <div className="history-content">
+
+                                    <h3>
+                                        {item?.query ||
+                                            "Untitled query"}
+                                    </h3>
 
 
-                                <div className="history-meta">
+                                    <p>
+                                        {item?.answer ||
+                                            item?.summary ||
+                                            "Query completed successfully."}
+                                    </p>
 
-                                    <span>
-                                        <Clock3
-                                            size={12}
-                                        />
 
-                                        {formatDate(
-                                            item.timestamp
+                                    <div className="history-meta">
+
+                                        {item?.timestamp && (
+                                            <span>
+                                                <Clock3 size={12} />
+
+                                                {formatDate(
+                                                    item.timestamp
+                                                )}
+                                            </span>
                                         )}
-                                    </span>
 
 
-                                    {item.sql && (
+                                        {item?.sql && (
+                                            <span>
+                                                <Code2 size={12} />
+                                                SQL generated
+                                            </span>
+                                        )}
 
-                                        <span>
-                                            <Code2
-                                                size={12}
-                                            />
-                                            SQL generated
-                                        </span>
 
+                                        {item?.sql_corrected && (
+                                            <span className="corrected">
+                                                SQL corrected
+                                            </span>
+                                        )}
+
+                                    </div>
+
+                                </div>
+
+
+                                <div className="history-actions">
+
+                                    <button
+                                        className="rerun-button"
+                                        onClick={() =>
+                                            onSelect?.(item)
+                                        }
+                                        type="button"
+                                    >
+                                        <Play
+                                            size={14}
+                                            fill="currentColor"
+                                        />
+                                        Rerun
+                                    </button>
+
+
+                                    {onDelete && (
+                                        <button
+                                            className="history-delete"
+                                            onClick={() =>
+                                                onDelete(item.id)
+                                            }
+                                            title="Delete query"
+                                            aria-label="Delete query"
+                                            type="button"
+                                        >
+                                            <Trash2 size={15} />
+                                        </button>
                                     )}
 
                                 </div>
 
-                            </div>
-
-
-                            <div className="history-actions">
-
-                                <button
-                                    className="rerun-button"
-                                    onClick={() =>
-                                        onSelect(item)
-                                    }
-                                >
-                                    <Play
-                                        size={14}
-                                        fill="currentColor"
-                                    />
-                                    Rerun
-                                </button>
-
-
-                                {onDelete && (
-
-                                    <button
-                                        className="history-delete"
-                                        onClick={() =>
-                                            onDelete(
-                                                item.id
-                                            )
-                                        }
-                                        title="Delete query"
-                                        aria-label="Delete query"
-                                    >
-                                        <Trash2
-                                            size={15}
-                                        />
-                                    </button>
-
-                                )}
-
-                            </div>
-
-                        </article>
-
-                    ))}
+                            </article>
+                        );
+                    })}
 
                 </div>
-
             )}
 
         </section>
-
     );
-
 }
