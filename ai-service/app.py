@@ -46,7 +46,6 @@ def verify_internal_key(
     print("✅ INTERNAL KEY VERIFIED")
 
     
-print("🔥🔥🔥 APP.PY LOADED 🔥🔥🔥")
 
 
 class SQLRequest(BaseModel):

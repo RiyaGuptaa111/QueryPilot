@@ -1,4 +1,3 @@
-print("🔥🔥🔥 RESULT ANALYZER FILE LOADED 🔥🔥🔥")
 
 from numbers import Number
 
@@ -10,7 +9,6 @@ def analyze_result(
     rows: list
 ):
 
-    print("🔥🔥🔥 ANALYZE_RESULT FUNCTION CALLED 🔥🔥🔥")
     print("COLUMNS:", columns)
     print("ROWS:", rows)
 
