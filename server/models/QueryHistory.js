@@ -1,42 +1,44 @@
 import mongoose from "mongoose";
 
 const queryHistorySchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
+    {
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+            index: true,
+        },
 
-    naturalLanguageQuery: {
-      type: String,
-      required: true,
-    },
+        naturalLanguageQuery: {
+            type: String,
+            required: true,
+            trim: true,
+        },
 
-    generatedSQL: {
-      type: String,
-      default: "",
-    },
+        generatedSQL: {
+            type: String,
+            default: "",
+        },
 
-    status: {
-      type: String,
-      enum: ["pending", "success", "failed"],
-      default: "pending",
-    },
+        status: {
+            type: String,
+            enum: ["pending", "success", "failed"],
+            default: "pending",
+        },
 
-    error: {
-      type: String,
-      default: "",
+        error: {
+            type: String,
+            default: "",
+        },
     },
-  },
-  {
-    timestamps: true,
-  }
+    {
+        timestamps: true,
+    }
 );
 
 const QueryHistory = mongoose.model(
-  "QueryHistory",
-  queryHistorySchema
+    "QueryHistory",
+    queryHistorySchema
 );
 
 export default QueryHistory;

@@ -5,6 +5,7 @@ import aiRoutes from "./routes/aiRoutes.js";
 import authRoutes from "./routes/auth.js";
 import authMiddleware from "./middleware/authMiddleware.js";
 import aiRateLimiter from "./middleware/rateLimiter.js";
+import queryRoutes from "./routes/queryRoutes.js";
 
 const app = express();
 app.use(helmet());
@@ -37,6 +38,12 @@ app.use(
     authMiddleware,
     aiRateLimiter,
     aiRoutes
+);
+
+app.use(
+    "/api",
+    authMiddleware,
+    queryRoutes
 );
 
 

@@ -4,6 +4,12 @@ export default function authMiddleware(req, res, next) {
     try {
         const authHeader = req.headers.authorization;
 
+         console.log("========== JWT DEBUG ==========");
+        console.log("AUTH HEADER EXISTS:", !!authHeader);
+        console.log("AUTH HEADER:", authHeader ? "Bearer token received" : "MISSING");
+        console.log("JWT SECRET EXISTS:", !!process.env.JWT_SECRET);
+        console.log("JWT SECRET LENGTH:", process.env.JWT_SECRET?.length);
+        
         if (
             !authHeader ||
             !authHeader.startsWith("Bearer ")

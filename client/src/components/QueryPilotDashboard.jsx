@@ -47,6 +47,190 @@ import SettingsPage from "../pages/Settings";
 
 
 // ============================================================
+// HISTORY API HELPERS
+// ============================================================
+
+const getAuthToken = () => {
+    return (
+        localStorage.getItem("querypilot_token") ||
+        localStorage.getItem("token") ||
+        localStorage.getItem("authToken") ||
+        localStorage.getItem("accessToken")
+    );
+};
+
+const getAuthHeaders = () => {
+
+    const token = getAuthToken();
+
+    return {
+        "Content-Type": "application/json",
+
+        ...(token
+            ? {
+                Authorization: `Bearer ${token}`,
+            }
+            : {}),
+    };
+
+};
+
+
+// ============================================================
+// FETCH USER HISTORY
+// ============================================================
+
+const fetchQueryHistory = async () => {
+
+    const response = await fetch(
+        "http://localhost:4000/api/history",
+        {
+            method: "GET",
+            headers: getAuthHeaders(),
+        }
+    );
+
+
+    const data = await response.json();
+
+
+    if (!response.ok) {
+
+        throw new Error(
+            data.message ||
+            "Failed to fetch query history."
+        );
+
+    }
+
+
+    return data;
+
+};
+
+
+// ============================================================
+// SAVE USER HISTORY
+// ============================================================
+
+const saveQueryHistory = async ({
+    query,
+    sql,
+    status = "success",
+    error = "",
+}) => {
+
+    const response = await fetch(
+        "http://localhost:4000/api/history",
+        {
+            method: "POST",
+
+            headers: getAuthHeaders(),
+
+            body: JSON.stringify({
+
+                naturalLanguageQuery:
+                    query,
+
+                generatedSQL:
+                    sql || "",
+
+                status,
+
+                error,
+
+            }),
+        }
+    );
+
+
+    const data = await response.json();
+
+
+    if (!response.ok) {
+
+        throw new Error(
+            data.message ||
+            "Failed to save query history."
+        );
+
+    }
+
+
+    return data;
+
+};
+
+
+// ============================================================
+// DELETE ONE HISTORY ITEM
+// ============================================================
+
+const deleteQueryHistory = async (
+    id
+) => {
+
+    const response = await fetch(
+        `http://localhost:4000/api/history/${id}`,
+        {
+            method: "DELETE",
+            headers: getAuthHeaders(),
+        }
+    );
+
+
+    const data = await response.json();
+
+
+    if (!response.ok) {
+
+        throw new Error(
+            data.message ||
+            "Failed to delete history item."
+        );
+
+    }
+
+
+    return data;
+
+};
+
+
+// ============================================================
+// CLEAR USER HISTORY
+// ============================================================
+
+const clearQueryHistory = async () => {
+
+    const response = await fetch(
+        "http://localhost:4000/api/history",
+        {
+            method: "DELETE",
+            headers: getAuthHeaders(),
+        }
+    );
+
+
+    const data = await response.json();
+
+
+    if (!response.ok) {
+
+        throw new Error(
+            data.message ||
+            "Failed to clear query history."
+        );
+
+    }
+
+
+    return data;
+
+};
+
+
+// ============================================================
 // SIDEBAR
 // ============================================================
 
@@ -77,6 +261,7 @@ function Sidebar({
         },
     ];
 
+
     return (
         <aside className="sidebar">
 
@@ -100,9 +285,15 @@ function Sidebar({
                 className="new-query"
                 onClick={onNewQuery}
             >
+
                 <Plus size={17} />
+
                 New query
-                <span>⌘ K</span>
+
+                <span>
+                    ⌘ K
+                </span>
+
             </button>
 
 
@@ -113,25 +304,32 @@ function Sidebar({
 
             <nav>
 
-                {items.map(({ label, icon: Icon }) => (
+                {items.map(
+                    ({
+                        label,
+                        icon: Icon,
+                    }) => (
 
-                    <button
-                        key={label}
-                        className={
-                            active === label
-                                ? "nav-item active"
-                                : "nav-item"
-                        }
-                        onClick={() => setActive(label)}
-                    >
+                        <button
+                            key={label}
+                            className={
+                                active === label
+                                    ? "nav-item active"
+                                    : "nav-item"
+                            }
+                            onClick={() =>
+                                setActive(label)
+                            }
+                        >
 
-                        <Icon size={17} />
+                            <Icon size={17} />
 
-                        {label}
+                            {label}
 
-                    </button>
+                        </button>
 
-                ))}
+                    )
+                )}
 
             </nav>
 
@@ -166,14 +364,17 @@ function Sidebar({
                 <div className="profile">
 
                     <span className="avatar">
+
                         <UserRound size={16} />
+
                     </span>
 
 
                     <div className="profile-info">
 
                         <strong>
-                            {user?.name || "QueryPilot User"}
+                            {user?.name ||
+                                "QueryPilot User"}
                         </strong>
 
                         <small>
@@ -220,12 +421,16 @@ function QueryComposer({
         "Which department has the highest average salary?",
     ];
 
+
     return (
         <section className="composer card">
 
             <div className="section-kicker">
+
                 <Sparkles size={15} />
+
                 Ask your database
+
             </div>
 
 
@@ -243,18 +448,24 @@ function QueryComposer({
 
                 <div className="suggestions">
 
-                    {suggestions.map((suggestion) => (
+                    {suggestions.map(
+                        (suggestion) => (
 
-                        <button
-                            key={suggestion}
-                            onClick={() =>
-                                setQuery(suggestion)
-                            }
-                        >
-                            {suggestion}
-                        </button>
+                            <button
+                                key={suggestion}
+                                onClick={() =>
+                                    setQuery(
+                                        suggestion
+                                    )
+                                }
+                            >
 
-                    ))}
+                                {suggestion}
+
+                            </button>
+
+                        )
+                    )}
 
                 </div>
 
@@ -269,20 +480,26 @@ function QueryComposer({
                 >
 
                     {loading ? (
+
                         <Loader2
                             className="spin"
                             size={16}
                         />
+
                     ) : (
+
                         <Play
                             size={16}
                             fill="currentColor"
                         />
+
                     )}
+
 
                     {loading
                         ? "Running"
                         : "Run query"}
+
 
                     <span>
                         ⌘ ↵
@@ -377,8 +594,10 @@ function AIResponse({
                             </strong>
 
                             <p>
+
                                 {result.clarification_question ||
                                     "Could you provide more details about what you want to know?"}
+
                             </p>
 
                         </div>
@@ -409,7 +628,9 @@ function AIResponse({
                         {result.summary && (
 
                             <p className="ai-summary">
+
                                 {result.summary}
+
                             </p>
 
                         )}
@@ -424,8 +645,10 @@ function AIResponse({
                 !result && (
 
                     <p className="empty-answer">
+
                         Ask a question about your database
                         to get started.
+
                     </p>
 
                 )}
@@ -439,7 +662,8 @@ function AIResponse({
 
                         <Clock3 size={13} />
 
-                        {result.execution_time !== undefined
+                        {result.execution_time !==
+                            undefined
                             ? `Query processed in ${result.execution_time}s`
                             : "Query processed"}
 
@@ -489,12 +713,17 @@ function SQLCard({
 
         try {
 
-            await navigator.clipboard.writeText(sql);
+            await navigator.clipboard
+                .writeText(sql);
+
 
             setCopied(true);
 
+
             setTimeout(() => {
+
                 setCopied(false);
+
             }, 1500);
 
         } catch (error) {
@@ -584,14 +813,18 @@ function ResultsTable({
         !Array.isArray(result.rows) ||
         result.rows.length === 0
     ) {
+
         return null;
+
     }
 
 
     const columns =
         Array.isArray(result.columns) &&
         result.columns.length > 0
+
             ? result.columns
+
             : Object.keys(
                 result.rows[0] || {}
             );
@@ -604,35 +837,51 @@ function ResultsTable({
 
 
         const rows =
-            result.rows.map((row) => {
+            result.rows.map(
+                (row) => {
 
-                return columns
-                    .map((column) => {
+                    return columns
+                        .map(
+                            (column) => {
 
-                        const value =
-                            row[column];
+                                const value =
+                                    row[column];
 
-                        if (
-                            value === null ||
-                            value === undefined
-                        ) {
-                            return "";
-                        }
 
-                        const text =
-                            typeof value === "object"
-                                ? JSON.stringify(value)
-                                : String(value);
+                                if (
+                                    value === null ||
+                                    value === undefined
+                                ) {
 
-                        return `"${text.replace(
-                            /"/g,
-                            '""'
-                        )}"`;
+                                    return "";
 
-                    })
-                    .join(",");
+                                }
 
-            });
+
+                                const text =
+                                    typeof value ===
+                                        "object"
+
+                                        ? JSON.stringify(
+                                            value
+                                        )
+
+                                        : String(
+                                            value
+                                        );
+
+
+                                return `"${text.replace(
+                                    /"/g,
+                                    '""'
+                                )}"`;
+
+                            }
+                        )
+                        .join(",");
+
+                }
+            );
 
 
         return [
@@ -669,15 +918,23 @@ function ResultsTable({
 
         link.href = url;
 
+
         link.download =
             "querypilot-results.csv";
 
 
-        document.body.appendChild(link);
+        document.body.appendChild(
+            link
+        );
+
 
         link.click();
 
-        document.body.removeChild(link);
+
+        document.body.removeChild(
+            link
+        );
+
 
         URL.revokeObjectURL(url);
 
@@ -707,16 +964,17 @@ function ResultsTable({
             ].join("\n");
 
 
-            await navigator.clipboard.writeText(
-                text
-            );
+            await navigator.clipboard
+                .writeText(text);
 
 
             setCopied(true);
 
 
             setTimeout(() => {
+
                 setCopied(false);
+
             }, 1500);
 
         } catch (error) {
@@ -745,6 +1003,7 @@ function ResultsTable({
                         Query results
 
                     </div>
+
 
                     <h3>
 
@@ -801,13 +1060,15 @@ function ResultsTable({
 
                         <tr>
 
-                            {columns.map((column) => (
+                            {columns.map(
+                                (column) => (
 
-                                <th key={column}>
-                                    {column}
-                                </th>
+                                    <th key={column}>
+                                        {column}
+                                    </th>
 
-                            ))}
+                                )
+                            )}
 
                         </tr>
 
@@ -861,16 +1122,21 @@ function formatValue(value) {
         value === null ||
         value === undefined
     ) {
+
         return "NULL";
+
     }
 
 
     if (typeof value === "object") {
+
         return JSON.stringify(value);
+
     }
 
 
     return String(value);
+
 }
 
 
@@ -892,7 +1158,9 @@ function Visualization({
         result.chart.type === "none" ||
         result.chart.type === "table"
     ) {
+
         return null;
+
     }
 
 
@@ -900,7 +1168,9 @@ function Visualization({
         !Array.isArray(result.rows) ||
         result.rows.length === 0
     ) {
+
         return null;
+
     }
 
 
@@ -944,42 +1214,46 @@ function Visualization({
 
 
     const chartData =
-        result.rows.map((row) => {
+        result.rows.map(
+            (row) => {
 
-            const formattedRow = {
-                ...row,
-            };
-
-
-            if (
-                yAxis &&
-                formattedRow[yAxis] !== undefined &&
-                formattedRow[yAxis] !== null
-            ) {
-
-                const numericValue =
-                    Number(
-                        formattedRow[yAxis]
-                    );
+                const formattedRow = {
+                    ...row,
+                };
 
 
                 if (
-                    !Number.isNaN(
-                        numericValue
-                    )
+                    yAxis &&
+                    formattedRow[yAxis] !==
+                        undefined &&
+                    formattedRow[yAxis] !==
+                        null
                 ) {
 
-                    formattedRow[yAxis] =
-                        numericValue;
+                    const numericValue =
+                        Number(
+                            formattedRow[yAxis]
+                        );
+
+
+                    if (
+                        !Number.isNaN(
+                            numericValue
+                        )
+                    ) {
+
+                        formattedRow[yAxis] =
+                            numericValue;
+
+                    }
 
                 }
 
+
+                return formattedRow;
+
             }
-
-
-            return formattedRow;
-
-        });
+        );
 
 
     return (
@@ -1101,6 +1375,10 @@ function DynamicChart({
     }
 
 
+    // ========================================================
+    // PIE CHART
+    // ========================================================
+
     if (type === "pie") {
 
         return (
@@ -1145,6 +1423,7 @@ function DynamicChart({
 
                         </Pie>
 
+
                         <Tooltip />
 
                     </PieChart>
@@ -1155,6 +1434,10 @@ function DynamicChart({
         );
     }
 
+
+    // ========================================================
+    // LINE CHART
+    // ========================================================
 
     if (type === "line") {
 
@@ -1175,18 +1458,22 @@ function DynamicChart({
                             vertical={false}
                         />
 
+
                         <XAxis
                             dataKey={xAxis}
                             tickLine={false}
                             axisLine={false}
                         />
 
+
                         <YAxis
                             tickLine={false}
                             axisLine={false}
                         />
 
+
                         <Tooltip />
+
 
                         <Line
                             type="monotone"
@@ -1203,6 +1490,10 @@ function DynamicChart({
         );
     }
 
+
+    // ========================================================
+    // BAR CHART
+    // ========================================================
 
     if (type === "bar") {
 
@@ -1223,18 +1514,22 @@ function DynamicChart({
                             vertical={false}
                         />
 
+
                         <XAxis
                             dataKey={xAxis}
                             tickLine={false}
                             axisLine={false}
                         />
 
+
                         <YAxis
                             tickLine={false}
                             axisLine={false}
                         />
 
+
                         <Tooltip />
+
 
                         <Bar
                             dataKey={yAxis}
@@ -1300,6 +1595,7 @@ export default function QueryPilotDashboard({
                     "querypilot_theme"
                 );
 
+
             return saved !== "light";
 
         });
@@ -1309,7 +1605,9 @@ export default function QueryPilotDashboard({
 
         localStorage.setItem(
             "querypilot_theme",
-            dark ? "dark" : "light"
+            dark
+                ? "dark"
+                : "light"
         );
 
     }, [dark]);
@@ -1320,36 +1618,177 @@ export default function QueryPilotDashboard({
     // ========================================================
 
     const [history, setHistory] =
-        useState(() => {
+        useState([]);
 
-            try {
 
-                const saved =
-                    localStorage.getItem(
-                        "querypilot_history"
-                    );
+    const [historyLoading, setHistoryLoading] =
+        useState(false);
 
-                return saved
-                    ? JSON.parse(saved)
-                    : [];
 
-            } catch {
-
-                return [];
-
-            }
-
-        });
-
+    // ========================================================
+    // LOAD USER HISTORY FROM MONGODB
+    // ========================================================
 
     useEffect(() => {
 
-        localStorage.setItem(
-            "querypilot_history",
-            JSON.stringify(history)
-        );
+        let cancelled = false;
 
-    }, [history]);
+
+        const loadHistory = async () => {
+
+            /*
+             * No logged-in user:
+             * clear history from the UI.
+             */
+
+            if (!user) {
+
+                setHistory([]);
+
+                return;
+
+            }
+
+
+            setHistoryLoading(true);
+
+
+            try {
+
+                const data =
+                    await fetchQueryHistory();
+
+
+                if (cancelled) {
+                    return;
+                }
+
+
+                if (
+                    data?.success &&
+                    Array.isArray(
+                        data.queries
+                    )
+                ) {
+
+                    const formattedHistory =
+                        data.queries.map(
+                            (item) => ({
+
+                                /*
+                                 * MongoDB _id
+                                 * becomes the frontend id.
+                                 */
+
+                                id:
+                                    item._id,
+
+
+                                /*
+                                 * QueryHistory model
+                                 */
+
+                                query:
+                                    item.naturalLanguageQuery,
+
+
+                                /*
+                                 * The model currently
+                                 * doesn't store answer,
+                                 * summary, chart, etc.
+                                 */
+
+                                answer:
+                                    item.answer ||
+                                    (
+                                        item.status ===
+                                        "failed"
+
+                                            ? "Query failed."
+
+                                            : "Query completed successfully."
+                                    ),
+
+
+                                sql:
+                                    item.generatedSQL ||
+                                    "",
+
+
+                                summary:
+                                    item.summary ||
+                                    "",
+
+
+                                chart:
+                                    item.chart ||
+                                    null,
+
+
+                                execution_time:
+                                    item.execution_time ||
+                                    null,
+
+
+                                timestamp:
+                                    item.createdAt,
+
+
+                                status:
+                                    item.status,
+
+
+                                error:
+                                    item.error ||
+                                    "",
+
+                            })
+                        );
+
+
+                    setHistory(
+                        formattedHistory
+                    );
+
+                } else {
+
+                    setHistory([]);
+
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "LOAD HISTORY ERROR:",
+                    error
+                );
+
+
+                setHistory([]);
+
+            } finally {
+
+                if (!cancelled) {
+
+                    setHistoryLoading(false);
+
+                }
+
+            }
+
+        };
+
+
+        loadHistory();
+
+
+        return () => {
+
+            cancelled = true;
+
+        };
+
+    }, [user]);
 
 
     // ========================================================
@@ -1381,6 +1820,10 @@ export default function QueryPilotDashboard({
                     currentQuery
                 );
 
+
+            // ==================================================
+            // DEBUG LOGS
+            // ==================================================
 
             console.log(
                 "========== QUERY RESULT =========="
@@ -1456,7 +1899,7 @@ export default function QueryPilotDashboard({
 
 
             // ==================================================
-            // SAVE HISTORY
+            // SAVE SUCCESSFUL QUERY TO MONGODB
             // ==================================================
 
             if (
@@ -1464,59 +1907,131 @@ export default function QueryPilotDashboard({
                 data.success !== false
             ) {
 
-                setHistory((previous) => {
+                try {
 
-                    const newItem = {
+                    const saved =
+                        await saveQueryHistory({
 
-                        id:
-                            Date.now(),
+                            query:
+                                currentQuery,
 
-                        query:
-                            currentQuery,
+                            sql:
+                                data.sql ||
+                                "",
 
-                        answer:
-                            data.answer ||
-                            data.explanation ||
-                            "Query completed successfully.",
+                            status:
+                                "success",
 
-                        sql:
-                            data.sql ||
-                            "",
+                            error:
+                                "",
 
-                        summary:
-                            data.summary ||
-                            "",
-
-                        chart:
-                            data.chart ||
-                            null,
-
-                        execution_time:
-                            data.execution_time ||
-                            null,
-
-                        timestamp:
-                            new Date().toISOString(),
-
-                    };
+                        });
 
 
-                    return [
-
-                        newItem,
-
-                        ...previous.filter(
-                            (item) =>
-                                item.query !==
-                                currentQuery
-                        ),
-
-                    ].slice(
-                        0,
-                        50
+                    console.log(
+                        "HISTORY SAVED:",
+                        saved
                     );
 
-                });
+
+                    if (
+                        saved?.success &&
+                        saved.history
+                    ) {
+
+                        const item =
+                            saved.history;
+
+
+                        const historyItem = {
+
+                            id:
+                                item._id,
+
+
+                            query:
+                                item.naturalLanguageQuery,
+
+
+                            answer:
+                                data.answer ||
+                                data.explanation ||
+                                "Query completed successfully.",
+
+
+                            sql:
+                                item.generatedSQL ||
+                                data.sql ||
+                                "",
+
+
+                            summary:
+                                data.summary ||
+                                "",
+
+
+                            chart:
+                                data.chart ||
+                                null,
+
+
+                            execution_time:
+                                data.execution_time ||
+                                null,
+
+
+                            timestamp:
+                                item.createdAt,
+
+
+                            status:
+                                item.status,
+
+
+                            error:
+                                item.error ||
+                                "",
+
+                        };
+
+
+                        setHistory(
+                            (previous) => [
+
+                                historyItem,
+
+                                ...previous.filter(
+                                    (oldItem) =>
+                                        oldItem.query !==
+                                        currentQuery
+                                ),
+
+                            ].slice(
+                                0,
+                                50
+                            )
+                        );
+
+                    }
+
+                } catch (
+                    historyError
+                ) {
+
+                    /*
+                     * Important:
+                     *
+                     * If MongoDB history saving
+                     * fails, the actual query
+                     * should still remain successful.
+                     */
+
+                    console.error(
+                        "SAVE HISTORY ERROR:",
+                        historyError
+                    );
+
+                }
 
             }
 
@@ -1573,6 +2088,7 @@ export default function QueryPilotDashboard({
             historyItem.query
         );
 
+
         setResult(null);
 
         setError(null);
@@ -1586,17 +2102,33 @@ export default function QueryPilotDashboard({
     // DELETE HISTORY
     // ========================================================
 
-    const handleDeleteHistory = (
+    const handleDeleteHistory = async (
         id
     ) => {
 
-        setHistory(
-            (previous) =>
-                previous.filter(
-                    (item) =>
-                        item.id !== id
-                )
-        );
+        try {
+
+            await deleteQueryHistory(
+                id
+            );
+
+
+            setHistory(
+                (previous) =>
+                    previous.filter(
+                        (item) =>
+                            item.id !== id
+                    )
+            );
+
+        } catch (error) {
+
+            console.error(
+                "DELETE HISTORY ERROR:",
+                error
+            );
+
+        }
 
     };
 
@@ -1605,13 +2137,55 @@ export default function QueryPilotDashboard({
     // CLEAR HISTORY
     // ========================================================
 
-    const handleClearHistory = () => {
+    const handleClearHistory = async () => {
+
+        try {
+
+            await clearQueryHistory();
+
+
+            setHistory([]);
+
+        } catch (error) {
+
+            console.error(
+                "CLEAR HISTORY ERROR:",
+                error
+            );
+
+        }
+
+    };
+
+
+    // ========================================================
+    // LOGOUT
+    // ========================================================
+
+    const handleLogout = () => {
+
+        /*
+         * Clear all user-specific
+         * dashboard state immediately.
+         */
 
         setHistory([]);
 
-        localStorage.removeItem(
-            "querypilot_history"
-        );
+        setQuery("");
+
+        setResult(null);
+
+        setError(null);
+
+        setActive("Overview");
+
+
+        /*
+         * Call the actual logout
+         * function from App.
+         */
+
+        onLogout();
 
     };
 
@@ -1626,6 +2200,7 @@ export default function QueryPilotDashboard({
             event
         ) => {
 
+            // Ctrl/Cmd + K
             if (
                 (
                     event.ctrlKey ||
@@ -1642,16 +2217,17 @@ export default function QueryPilotDashboard({
             }
 
 
+            // Ctrl/Cmd + Enter
             if (
                 (
                     event.ctrlKey ||
                     event.metaKey
                 ) &&
-                event.key ===
-                    "Enter"
+                event.key === "Enter"
             ) {
 
                 event.preventDefault();
+
 
                 if (
                     query.trim() &&
@@ -1702,14 +2278,26 @@ export default function QueryPilotDashboard({
             }
         >
 
+            {/* ==================================================
+                SIDEBAR
+            ================================================== */}
+
             <Sidebar
                 active={active}
                 setActive={setActive}
-                onNewQuery={handleNewQuery}
+                onNewQuery={
+                    handleNewQuery
+                }
                 user={user}
-                onLogout={onLogout}
+                onLogout={
+                    handleLogout
+                }
             />
 
+
+            {/* ==================================================
+                MAIN CONTENT
+            ================================================== */}
 
             <main className="main-content">
 
@@ -1751,7 +2339,9 @@ export default function QueryPilotDashboard({
                         <button
                             className="icon-button"
                             onClick={() =>
-                                setDark(!dark)
+                                setDark(
+                                    !dark
+                                )
                             }
                             aria-label="Toggle theme"
                         >
@@ -1771,6 +2361,10 @@ export default function QueryPilotDashboard({
 
                 <div className="content-grid">
 
+
+                    {/* ==================================================
+                        OVERVIEW
+                    ================================================== */}
 
                     {active === "Overview" && (
 
@@ -1838,25 +2432,58 @@ export default function QueryPilotDashboard({
                     )}
 
 
+                    {/* ==================================================
+                        QUERY HISTORY
+                    ================================================== */}
+
                     {active === "Query History" && (
 
-                        <QueryHistory
-                            history={
-                                history
-                            }
-                            onSelect={
-                                handleHistorySelect
-                            }
-                            onClear={
-                                handleClearHistory
-                            }
-                            onDelete={
-                                handleDeleteHistory
-                            }
-                        />
+                        <>
+
+                            {historyLoading ? (
+
+                                <section className="card">
+
+                                    <div className="loading-state">
+
+                                        <Loader2
+                                            className="spin"
+                                            size={21}
+                                        />
+
+                                        Loading query history...
+
+                                    </div>
+
+                                </section>
+
+                            ) : (
+
+                                <QueryHistory
+                                    history={
+                                        history
+                                    }
+                                    onSelect={
+                                        handleHistorySelect
+                                    }
+                                    onClear={
+                                        handleClearHistory
+                                    }
+                                    onDelete={
+                                        handleDeleteHistory
+                                    }
+                                />
+
+                            )}
+
+                        </>
 
                     )}
 
+
+                    {/* ==================================================
+                        DATABASE
+                    ================================================== */}
 
                     {active === "Database" && (
 
@@ -1864,6 +2491,10 @@ export default function QueryPilotDashboard({
 
                     )}
 
+
+                    {/* ==================================================
+                        SETTINGS
+                    ================================================== */}
 
                     {active === "Settings" && (
 
@@ -1877,7 +2508,7 @@ export default function QueryPilotDashboard({
                                 handleClearHistory
                             }
                             onLogout={
-                                onLogout
+                                handleLogout
                             }
                         />
 
