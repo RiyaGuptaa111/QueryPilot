@@ -216,12 +216,13 @@ def query_database(
     _: None = Depends(verify_internal_key)
 ):
     print("🔥 /query ENDPOINT HIT")
-    print("QUERY:", request.query)
+    print("🔥 QUERY:", request.query)
 
     try:
         result = process_query(request.query)
 
-        print("🔥 PROCESS_QUERY COMPLETED")
+        print("🔥 PROCESS_QUERY RESULT:", result)
+
         return result
 
     except Exception as e:
@@ -229,9 +230,9 @@ def query_database(
 
         return {
             "success": False,
-            "error": "Unable to process query."
+            "error": str(e)
         }
-
+    
 # ============================================================
 # VALIDATE SQL
 # ============================================================
