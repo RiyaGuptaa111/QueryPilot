@@ -279,6 +279,13 @@ router.post("/login", async (req, res) => {
     try {
         const { username, password } = req.body;
 
+        if (!username?.trim() || !password) {
+            return res.status(400).json({
+                success: false,
+                message: "Username and password are required.",
+            });
+        }
+
         const user = await User.findOne({
             username: username.trim(),
         });
@@ -302,18 +309,9 @@ router.post("/login", async (req, res) => {
             });
         }
 
-        const token = jwt.sign(
-            {
-                id: user._id,
-                username: user.username,
-            },
-            process.env.JWT_SECRET,
-            {
-                expiresIn: "1d",
-            }
-        );
+        const token = generateToken(user);
 
-        res.json({
+        return res.json({
             success: true,
             message: "Login successful",
             token,
@@ -326,7 +324,7 @@ router.post("/login", async (req, res) => {
     } catch (error) {
         console.error("LOGIN ERROR:", error);
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: "Server error during login",
         });
