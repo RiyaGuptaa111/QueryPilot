@@ -196,5 +196,33 @@ router.get(
     }
 );
 
+// ============================================================
+// INDEX DATABASE SCHEMA
+// ============================================================
+
+router.post("/index-schema", async (req, res) => {
+    try {
+        const response = await axios.post(
+            `${AI_SERVICE_URL}/index-schema`,
+            {},
+            {
+                headers: getAIHeaders(),
+            }
+        );
+
+        return res.json(response.data);
+
+    } catch (error) {
+        console.error(
+            "Schema Index Error:",
+            error.response?.data || error.message
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: "Unable to index database schema.",
+        });
+    }
+});
 
 export default router;
