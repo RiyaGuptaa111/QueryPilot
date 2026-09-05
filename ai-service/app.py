@@ -97,11 +97,13 @@ def database_health(
             "database": "PostgreSQL"
         }
 
-    except Exception:
+    except Exception as e:
+        print("🔥 DATABASE CONNECTION ERROR:", repr(e))
         return {
             "success": False,
             "status": "disconnected",
-            "database": "PostgreSQL"
+            "database": "PostgreSQL",
+            "error": str(e)
         }
 
     finally:
