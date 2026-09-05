@@ -45,6 +45,9 @@ import QueryHistory from "./QueryHistory";
 import DatabaseExplorer from "./DatabaseExplorer";
 import SettingsPage from "../pages/Settings";
 
+const BASE_URL =
+    import.meta.env.VITE_API_URL ||
+    "http://localhost:4000/api";
 
 // ============================================================
 // HISTORY API HELPERS
@@ -81,31 +84,24 @@ const getAuthHeaders = () => {
 // ============================================================
 
 const fetchQueryHistory = async () => {
-
     const response = await fetch(
-        "http://localhost:4000/api/history",
+        `${BASE_URL}/history`,
         {
             method: "GET",
             headers: getAuthHeaders(),
         }
     );
 
-
     const data = await response.json();
 
-
     if (!response.ok) {
-
         throw new Error(
             data.message ||
             "Failed to fetch query history."
         );
-
     }
 
-
     return data;
-
 };
 
 
@@ -119,46 +115,32 @@ const saveQueryHistory = async ({
     status = "success",
     error = "",
 }) => {
-
     const response = await fetch(
-        "http://localhost:4000/api/history",
+        `${BASE_URL}/history`,
         {
             method: "POST",
 
             headers: getAuthHeaders(),
 
             body: JSON.stringify({
-
-                naturalLanguageQuery:
-                    query,
-
-                generatedSQL:
-                    sql || "",
-
+                naturalLanguageQuery: query,
+                generatedSQL: sql || "",
                 status,
-
                 error,
-
             }),
         }
     );
 
-
     const data = await response.json();
 
-
     if (!response.ok) {
-
         throw new Error(
             data.message ||
             "Failed to save query history."
         );
-
     }
 
-
     return data;
-
 };
 
 
@@ -166,34 +148,25 @@ const saveQueryHistory = async ({
 // DELETE ONE HISTORY ITEM
 // ============================================================
 
-const deleteQueryHistory = async (
-    id
-) => {
-
+const deleteQueryHistory = async (id) => {
     const response = await fetch(
-        `http://localhost:4000/api/history/${id}`,
+        `${BASE_URL}/history/${id}`,
         {
             method: "DELETE",
             headers: getAuthHeaders(),
         }
     );
 
-
     const data = await response.json();
 
-
     if (!response.ok) {
-
         throw new Error(
             data.message ||
             "Failed to delete history item."
         );
-
     }
 
-
     return data;
-
 };
 
 
@@ -202,33 +175,25 @@ const deleteQueryHistory = async (
 // ============================================================
 
 const clearQueryHistory = async () => {
-
     const response = await fetch(
-        "http://localhost:4000/api/history",
+        `${BASE_URL}/history`,
         {
             method: "DELETE",
             headers: getAuthHeaders(),
         }
     );
 
-
     const data = await response.json();
 
-
     if (!response.ok) {
-
         throw new Error(
             data.message ||
             "Failed to clear query history."
         );
-
     }
 
-
     return data;
-
 };
-
 
 // ============================================================
 // SIDEBAR
