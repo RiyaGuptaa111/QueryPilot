@@ -9,9 +9,12 @@ import queryRoutes from "./routes/queryRoutes.js";
 
 const app = express();
 app.use(helmet());
+
+const allowedOrigin = process.env.CLIENT_URL || "http://localhost:5173";
+
 app.use(
     cors({
-        origin: true,
+        origin: allowedOrigin,
         credentials: true,
     })
 );
