@@ -23,6 +23,9 @@ AI_SERVICE_KEY = os.getenv("AI_SERVICE_KEY")
 def verify_internal_key(
     x_internal_key: str = Header(None)
 ):
+    print("🔥 INTERNAL KEY RECEIVED:", bool(x_internal_key))
+    print("🔥 AI SERVICE KEY EXISTS:", bool(AI_SERVICE_KEY))
+
     if not AI_SERVICE_KEY:
         raise HTTPException(
             status_code=500,
@@ -30,11 +33,11 @@ def verify_internal_key(
         )
 
     if x_internal_key != AI_SERVICE_KEY:
+        print("🔥 INTERNAL KEY MISMATCH")
         raise HTTPException(
             status_code=401,
             detail="Unauthorized AI service request."
         )
-
 
 class SQLRequest(BaseModel):
     query: str
@@ -212,15 +215,22 @@ def query_database(
     request: QueryRequest,
     _: None = Depends(verify_internal_key)
 ):
-    try:
-        return process_query(request.query)
+    print("🔥 /query ENDPOINT HIT")
+    print("QUERY:", request.query)
 
-    except Exception:
+    try:
+        result = process_query(request.query)
+
+        print("🔥 PROCESS_QUERY COMPLETED")
+        return result
+
+    except Exception as e:
+        print("🔥 PROCESS_QUERY ERROR:", repr(e))
+
         return {
             "success": False,
             "error": "Unable to process query."
         }
-
 
 # ============================================================
 # VALIDATE SQL
